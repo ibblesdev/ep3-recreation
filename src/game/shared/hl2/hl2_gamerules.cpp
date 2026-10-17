@@ -181,6 +181,14 @@ ConVar	sk_max_gauss_round		( "sk_max_gauss_round", "0", FCVAR_REPLICATED );
 ConVar	sk_npc_dmg_gunship			( "sk_npc_dmg_gunship", "0", FCVAR_REPLICATED );
 ConVar	sk_npc_dmg_gunship_to_plr	( "sk_npc_dmg_gunship_to_plr", "0", FCVAR_REPLICATED );
 
+#ifdef HL2_EP3
+// Testing out the HL1 weapons and need these convars
+ConVar sk_plr_dmg_gauss("sk_plr_dmg_gauss", "0", FCVAR_REPLICATED);
+ConVar sk_plr_dmg_egon_narrow("sk_plr_dmg_egon_narrow", "0", FCVAR_REPLICATED);
+ConVar sk_plr_dmg_egon_wide("sk_plr_dmg_egon_wide", "0", FCVAR_REPLICATED);
+ConVar sk_max_uranium("sk_max_uranium", "0", FCVAR_REPLICATED);
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : iDmgType - 
@@ -1904,6 +1912,12 @@ CAmmoDef *GetAmmoDef()
 		def.AddAmmoType("CombineHeavyCannon",	DMG_BULLET,				TRACER_LINE,			40,	40, NULL, 10 * 750 * 12, AMMO_FORCE_DROP_IF_CARRIED ); // hit like a 10 kg weight at 750 ft/s
 		def.AddAmmoType("ammo_proto1",			DMG_BULLET,				TRACER_LINE,			0, 0, 10, 0, 0 );
 #endif // HL2_EPISODIC
+
+//#ifdef HL2_EP3					    
+		def.AddAmmoType("FlechetteProjectile", DMG_BLAST, TRACER_NONE, "sk_plr_dmg_flechette_projectile", "sk_npc_dmg_flechette_projectile", "sk_max_flechette_projectile", 0, 0);
+		def.AddAmmoType("Fuel", DMG_BURN, TRACER_NONE, 0, 0, "sk_max_fuel", 0, 0);
+		def.AddAmmoType("Uranium", DMG_ENERGYBEAM, TRACER_NONE, NULL, NULL, "sk_max_uranium", 0, 0);
+//#endif // HL2_EP3
 	}
 
 	return &def;
