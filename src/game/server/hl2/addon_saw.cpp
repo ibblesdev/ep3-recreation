@@ -346,12 +346,12 @@ void CAddOnSaw::SpinSaw()
 	if( m_flCurrentSpeed > m_flTargetSpeed )
 	{
 		m_flCurrentSpeed -= SAW_SPEED_DOWN_RATE;
-		m_flCurrentSpeed = max( m_flCurrentSpeed, m_flTargetSpeed );
+		m_flCurrentSpeed = MAX( m_flCurrentSpeed, m_flTargetSpeed );
 	}
 	else if( m_flCurrentSpeed < m_flTargetSpeed )
 	{
 		m_flCurrentSpeed += SAW_SPEED_UP_RATE;
-		m_flCurrentSpeed = min( m_flCurrentSpeed, m_flTargetSpeed );
+		m_flCurrentSpeed = MIN( m_flCurrentSpeed, m_flTargetSpeed );
 	}
 
 	QAngle angle = GetLocalAngles();

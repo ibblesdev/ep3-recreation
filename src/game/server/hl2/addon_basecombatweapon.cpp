@@ -194,7 +194,7 @@ void CAddOnBaseCombatWeapon::StartShootingBurst( bool bPreDelay )
 
 	if ( pWeapon )
 	{
-		m_nBurstShotsRemaining = max( 1, pWeapon->GetMaxClip1() );
+		m_nBurstShotsRemaining = MAX( 1, pWeapon->GetMaxClip1() );
 	}
 	else
 	{

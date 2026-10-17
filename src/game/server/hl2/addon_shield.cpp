@@ -195,7 +195,7 @@ void CAI_ShieldAddOnBehavior::GatherConditions()
 	{
 		byte opacity;
 		opacity = ((int) (255.0f * AccessShieldAddOn()->GetShieldPowerPercent()) );
-		AccessShieldAddOn()->m_hShieldEffect->SetRenderColor( opacity, opacity, opacity, opacity );
+		AccessShieldAddOn()->m_hShieldEffect->SetRenderColor(opacity, opacity, opacity);//, opacity );
 
 		 if( AccessShieldAddOn()->GetShieldPower() <= 0.0f )
 		 {
@@ -495,13 +495,13 @@ void CAddOnShield::RunTask( const Task_t *pTask )
 		if( IsShieldEnabled() )
 		{
 			//m_flShieldPower -= 0.1f; Shield doesn't use power unless I'm being harmed.
-			m_flShieldPower = max( 0.0f, m_flShieldPower );
+			m_flShieldPower = MAX( 0.0f, m_flShieldPower );
 		}
 		else
 		{
 			// Recharge.
 			m_flShieldPower += (MAX_SHIELD_POWER/SHIELD_CHARGE_TIME) * 0.1f;
-			m_flShieldPower = min( MAX_SHIELD_POWER, m_flShieldPower );
+			m_flShieldPower = MIN( MAX_SHIELD_POWER, m_flShieldPower );
 		}
 		break;
 
@@ -516,7 +516,7 @@ void CAddOnShield::RunTask( const Task_t *pTask )
 void CAddOnShield::GatherConditions()
 {
 	// Stop the shield power from going below zero and taking too long to recharge
-	m_flShieldPower = max( 0.0f, m_flShieldPower );
+	m_flShieldPower = MAX( 0.0f, m_flShieldPower );
 
 	BaseClass::GatherConditions();
 
