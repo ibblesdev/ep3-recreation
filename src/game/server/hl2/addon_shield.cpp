@@ -195,7 +195,7 @@ void CAI_ShieldAddOnBehavior::GatherConditions()
 	{
 		byte opacity;
 		opacity = ((int) (255.0f * AccessShieldAddOn()->GetShieldPowerPercent()) );
-		AccessShieldAddOn()->m_hShieldEffect->SetRenderColor(opacity, opacity, opacity);//, opacity );
+		AccessShieldAddOn()->m_hShieldEffect->SetRenderAlpha(opacity); //SetRenderColor(opacity, opacity, opacity);//, opacity );
 
 		 if( AccessShieldAddOn()->GetShieldPower() <= 0.0f )
 		 {
