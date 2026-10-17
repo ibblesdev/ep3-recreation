@@ -1,0 +1,77 @@
+
+"AddOn.Install"
+{
+	"channel"		"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_NONE"
+	"volume"		"1"
+
+	"wave"	"player/suit_denydevice.wav"
+}
+
+
+"Addon_bomb.Ping"
+{
+	"channel"		"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_NONE"
+	"volume"		"1"
+
+	"wave"	"vehicles/junker/radar_ping_friendly1.wav"
+}
+
+"Addon_Mortar.Fire"
+{
+	"channel"		"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_NONE"
+	"volume"		"1"
+
+	"wave"	"weapons/mortar/mortar_fire1.wav"
+}
+
+"Addon_Mortar.Fall"
+{
+	"channel"		"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_NONE"
+	"volume"		"1"
+
+	"wave"	"weapons/mortar/mortar_shell_incomming1.wav"
+}
+
+"Addon_Minigun.Shoot"
+{
+	"channel"		"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_NONE"
+	"volume"		"1"
+
+	"wave"	"weapons/smg1/smg1_fire1.wav"
+}
+
+"Addon_Saw.Start"
+{
+	"channel"		"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_NONE"
+	"volume"		"1"
+
+	"wave"	"ambient/machines/spinup.wav"
+}
+
+"Addon_Saw.Run"
+{
+	"channel"		"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_NONE"
+	"volume"		"1"
+
+	"wave"	"ambient/machines/spin_loop.wav"
+}
+
+"Addon_Dartgun.Shoot"
+{
+	"channel"	"CHAN_STATIC"
+	"volume"	"1.0"
+	"soundlevel"	"SNDLVL_130dB"
+	"pitch"	"98,104"
+	"rndwave"
+	{
+		"wave"	"^npc/ministrider/ministrider_fire1.wav"	
+	}
+}
+
