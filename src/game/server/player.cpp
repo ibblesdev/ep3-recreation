@@ -6184,38 +6184,47 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 
 
 
-			// Give the player everything!
-			GiveAmmo( 255,	"Pistol");
-			GiveAmmo( 255,	"AR2");
-			GiveAmmo( 5,	"AR2AltFire");
-			GiveAmmo( 255,	"SMG1");
-			GiveAmmo( 255,	"Buckshot");
-			GiveAmmo( 3,	"smg1_grenade");
-			GiveAmmo( 3,	"rpg_round");
-			GiveAmmo( 5,	"grenade");
-			GiveAmmo( 32,	"357" );
-			GiveAmmo( 16,	"XBowBolt" );
-			#ifdef HL2_EPISODIC
-				GiveAmmo( 5,	"Hopwire" );
-			#endif
+		// Give the player everything!
+		GiveAmmo(255, "Pistol");
+		GiveAmmo(255, "AR2");
+		GiveAmmo(5, "AR2AltFire");
+		GiveAmmo(255, "SMG1");
+		GiveAmmo(255, "Buckshot");
+		GiveAmmo(3, "smg1_grenade");
+		GiveAmmo(3, "rpg_round");
+		GiveAmmo(5, "grenade");
+		GiveAmmo(32, "357");
+		GiveAmmo(16, "XBowBolt");
+#ifdef HL2_EPISODIC
+		GiveAmmo(5, "Hopwire");
+#endif
 
-			GiveNamedItem( "weapon_smg1" );
-			GiveNamedItem( "weapon_frag" );
-			GiveNamedItem( "weapon_crowbar" );
-			GiveNamedItem( "weapon_pistol" );
-			GiveNamedItem( "weapon_ar2" );
-			GiveNamedItem( "weapon_shotgun" );
-			GiveNamedItem( "weapon_physcannon" );
+		GiveNamedItem("weapon_smg1");
+		GiveNamedItem("weapon_frag");
+		GiveNamedItem("weapon_crowbar");
+		GiveNamedItem("weapon_pistol");
+		GiveNamedItem("weapon_ar2");
+		GiveNamedItem("weapon_shotgun");
+		GiveNamedItem("weapon_physcannon");
+#ifndef HL2_EP3 // No bugbait in EP3
+		GiveNamedItem("weapon_bugbait");
+#endif
+		GiveNamedItem("weapon_rpg");
+		GiveNamedItem("weapon_357");
+		GiveNamedItem("weapon_crossbow");
 
-				GiveNamedItem( "weapon_bugbait" );
-
-			GiveNamedItem( "weapon_rpg" );
-			GiveNamedItem( "weapon_357" );
-			GiveNamedItem( "weapon_crossbow" );
-
-
-
-
+//#ifdef HL2_EP3
+		GiveNamedItem("weapon_icegun");
+		GiveNamedItem("weapon_weaponizer");
+		GiveNamedItem("weapon_teleport");
+		GiveNamedItem("weapon_pipebomblauncher");
+		GiveNamedItem("weapon_flechettegun");
+		GiveNamedItem("weapon_flamethrower");
+		GiveNamedItem("weapon_egon");
+		GiveNamedItem("weapon_gauss");
+		GiveAmmo(999, "Fuel");
+		GiveAmmo(100, "Uranium");
+//#endif // HL2_EP3
 
 		if ( GetHealth() < 100 )
 		{
