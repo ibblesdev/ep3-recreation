@@ -103,6 +103,8 @@ ConVar sv_infinite_aux_power( "sv_infinite_aux_power", "0", FCVAR_CHEAT );
 ConVar autoaim_unlock_target( "autoaim_unlock_target", "0.8666" );
 
 ConVar sv_stickysprint("sv_stickysprint", "0", FCVAR_ARCHIVE | FCVAR_ARCHIVE_XBOX);
+ConVar sv_special_suit_abilities("sv_special_suit_abilities", "1", FCVAR_NONE);
+ConVar sv_special_suit_abilities_toggle("sv_special_suit_abilities_toggle", "0", FCVAR_NONE, "Set this to have the ALT1 key toggle the suit ability on and off.");
 
 #define	FLASH_DRAIN_TIME	 1.1111	// 100 units / 90 secs
 #define	FLASH_CHARGE_TIME	 50.0f	// 100 units / 2 secs
@@ -347,6 +349,10 @@ BEGIN_DATADESC( CHL2_Player )
 	DEFINE_FIELD( m_flAdmireGlovesAnimTime, FIELD_TIME ),
 	DEFINE_FIELD( m_flNextFlashlightCheckTime, FIELD_TIME ),
 	DEFINE_FIELD( m_flFlashlightPowerDrainScale, FIELD_FLOAT ),
+	DEFINE_FIELD(m_bAlt1ToggledOn, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_bAlt1ToggledNotReady, FIELD_BOOLEAN),
+
+	DEFINE_FIELD(m_hActiveSpecialSuitAbility, FIELD_EHANDLE),
 	DEFINE_FIELD( m_bFlashlightDisabled, FIELD_BOOLEAN ),
 
 	DEFINE_FIELD( m_bUseCappedPhysicsDamageTable, FIELD_BOOLEAN ),
@@ -376,6 +382,10 @@ BEGIN_DATADESC( CHL2_Player )
 	DEFINE_FIELD( m_flTimeNextLadderHint, FIELD_TIME ),
 
 	//DEFINE_FIELD( m_hPlayerProxy, FIELD_EHANDLE ), //Shut up class check!
+
+#ifdef HL2_EP3
+	DEFINE_SOUNDPATCH(m_pWooshSound),
+#endif
 
 END_DATADESC()
 
@@ -417,6 +427,10 @@ END_SEND_TABLE()
 void CHL2_Player::Precache( void )
 {
 	BaseClass::Precache();
+
+#ifdef HL2_EP3
+	PrecacheScriptSound("HL2Player.FastMoveWind");
+#endif
 
 	PrecacheScriptSound( "HL2Player.SprintNoPower" );
 	PrecacheScriptSound( "HL2Player.SprintStart" );
@@ -826,32 +840,23 @@ void CHL2_Player::PreThink(void)
 		m_Local.m_flFallVelocity = -GetAbsVelocity().z;
 	}
 
-	if ( m_afPhysicsFlags & PFLAG_ONBARNACLE )
+	if (m_afPhysicsFlags & PFLAG_IMMOBILIZED)
 	{
-		bool bOnBarnacle = false;
-		CNPC_Barnacle *pBarnacle = NULL;
-		do
+		bool bImmobilizedReason =
+#ifdef HL2_EP3
+			//AdvisorRoaming_IsPullingPlayer(this) || // TODO: Readd this once the roaming advisor is done
+#endif
+			false; // other reasons to be immobilized go here
+
+		if (!bImmobilizedReason)
 		{
-			// FIXME: Not a good or fast solution, but maybe it will catch the bug!
-			pBarnacle = (CNPC_Barnacle*)gEntList.FindEntityByClassname( pBarnacle, "npc_barnacle" );
-			if ( pBarnacle )
-			{
-				if ( pBarnacle->GetEnemy() == this )
-				{
-					bOnBarnacle = true;
-				}
-			}
-		} while ( pBarnacle );
-		
-		if ( !bOnBarnacle )
-		{
-			Warning( "Attached to barnacle?\n" );
-			Assert( 0 );
-			m_afPhysicsFlags &= ~PFLAG_ONBARNACLE;
+			Warning("Player no longer immobilized?\n");
+			Assert(0);
+			m_afPhysicsFlags &= ~PFLAG_IMMOBILIZED;
 		}
 		else
 		{
-			SetAbsVelocity( vec3_origin );
+			SetAbsVelocity(vec3_origin);
 		}
 	}
 	// StudioFrameAdvance( );//!!!HACKHACK!!! Can't be hit by traceline when not animating?
@@ -886,9 +891,39 @@ void CHL2_Player::PreThink(void)
 	}
 }
 
+#ifdef HL2_EP3
+//------------------------------------------------------------------------------
+// Plays a wind sound when the player is moving fast enough.
+//------------------------------------------------------------------------------
+ConVar hl2_player_wind_speed_min("hl2_player_wind_speed_min", "350");
+ConVar hl2_player_wind_speed_max("hl2_player_wind_speed_max", "650");
+void CHL2_Player::UpdateWooshSounds(void)
+{
+	if (m_pWooshSound && (GetMoveType() != MOVETYPE_NOCLIP))
+	{
+		CSoundEnvelopeController& controller = CSoundEnvelopeController::GetController();
+		float flWooshVolume = RemapValClamped(GetAbsVelocity().Length(), hl2_player_wind_speed_min.GetFloat(), hl2_player_wind_speed_max.GetFloat(), 0, 0.6);
+		controller.SoundChangeVolume(m_pWooshSound, flWooshVolume, 0.1f);
+
+		if ((flWooshVolume > 0) && !(GetFlags() & FL_ONGROUND))
+		{
+			controller.SoundChangePitch(m_pWooshSound, 130, 0.1f);
+		}
+		else
+		{
+			controller.SoundChangePitch(m_pWooshSound, 100, 0.1f);
+		}
+	}
+}
+#endif // HL2_EP3
+
 void CHL2_Player::PostThink( void )
 {
 	BaseClass::PostThink();
+
+#ifdef HL2_EP3
+	UpdateWooshSounds();
+#endif // HL2_EP3
 
 	if ( !g_fGameOver && !IsPlayerLockedInPlace() && IsAlive() )
 	{
@@ -938,6 +973,17 @@ void CHL2_Player::HandleAdmireGlovesAnimation( void )
 	}
 	else
 		m_flAdmireGlovesAnimTime = 0.0f;
+}
+
+
+void CHL2_Player::SetActiveSpecialSuitAbility(CBaseCombatWeapon* pAbility)
+{
+	m_hActiveSpecialSuitAbility = pAbility;
+}
+
+CBaseCombatWeapon* CHL2_Player::GetActiveSpecialSuitAbility(void) const
+{
+	return m_hActiveSpecialSuitAbility;
 }
 
 #define HL2PLAYER_RELOADGAME_ATTACK_DELAY 1.0f
@@ -3592,8 +3638,90 @@ void CHL2_Player::ItemPostFrame()
 		m_bPlayUseDenySound = false;
 		EmitSound( "HL2Player.UseDeny" );
 	}
+
+	SpecialSuitAbilityPostFrame();
 }
 
+void CHL2_Player::SpecialSuitAbilityPostFrame()
+{
+	// Get the suit ability
+	CBaseCombatWeapon* pAbility = GetActiveSpecialSuitAbility();
+
+	// Bail if we don't have any abilities or we don't want to use them
+	if (!pAbility || GetVehicle())
+		return;
+
+	// Put the buttons in safe keeping
+	int iButtonsTemp = m_nButtons;
+	int afButtonReleasedTemp = m_afButtonReleased;
+
+	// Don't let actual attack keys interup us
+	m_nButtons = (m_nButtons & (~IN_ATTACK));
+	m_afButtonReleased = (m_afButtonReleased & (~IN_ATTACK));
+
+	bool bPressAttack = false;
+	bool bReleaseAttack = false;
+
+	if (m_nButtons & IN_ALT1)
+	{
+		if (sv_special_suit_abilities_toggle.GetBool())
+		{
+			if (!m_bAlt1ToggledNotReady)
+			{
+				m_bAlt1ToggledOn = !m_bAlt1ToggledOn;
+				m_bAlt1ToggledNotReady = true;
+
+				if (!m_bAlt1ToggledOn)
+				{
+					bReleaseAttack = true;
+				}
+			}
+		}
+		else
+		{
+			bPressAttack = true;
+		}
+	}
+
+	if (m_afButtonReleased & IN_ALT1)
+	{
+		if (sv_special_suit_abilities_toggle.GetBool())
+		{
+			m_bAlt1ToggledNotReady = false;
+		}
+		else
+		{
+			bReleaseAttack = true;
+		}
+	}
+
+	if (sv_special_suit_abilities_toggle.GetBool() && m_bAlt1ToggledOn)
+	{
+		bPressAttack = true;
+	}
+
+	if (bPressAttack)
+	{
+		// Fake attack
+		m_nButtons |= IN_ATTACK;
+	}
+
+	if (bReleaseAttack)
+	{
+		// Fake attack release
+		m_afButtonReleased |= IN_ATTACK;
+	}
+
+	// Use it!
+	if (bPressAttack || bReleaseAttack)
+	{
+		pAbility->ItemPostFrame();
+	}
+
+	// Back to what it was
+	m_nButtons = iButtonsTemp;
+	m_afButtonReleased = afButtonReleasedTemp;
+}
 
 void CHL2_Player::StartWaterDeathSounds( void )
 {

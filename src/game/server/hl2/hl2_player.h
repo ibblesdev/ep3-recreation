@@ -180,6 +180,10 @@ public:
 	bool IsZooming( void );
 	void CheckSuitZoom( void );
 
+#ifdef HL2_EP3
+	void UpdateWooshSounds(void);
+#endif
+
 	virtual void				FlashlightTurnOn( void );
 	virtual void				FlashlightTurnOff( void );
 	virtual CBaseEntity	*CHL2_Player::GetHeldObject( void );
@@ -266,8 +270,8 @@ public:
 	void  HandleAdmireGlovesAnimation( void );
 	void  StartAdmireGlovesAnimation( void );
 
-	//virtual void				SetActiveSpecialSuitAbility( CBaseCombatWeapon *pAbility );
-	//virtual CBaseCombatWeapon	*GetActiveSpecialSuitAbility( void ) const;
+	virtual void				SetActiveSpecialSuitAbility( CBaseCombatWeapon *pAbility );
+	virtual CBaseCombatWeapon	*GetActiveSpecialSuitAbility( void ) const;
 	
 	void  HandleSpeedChanges( void );
 
@@ -301,7 +305,7 @@ protected:
 	virtual void		UpdateWeaponPosture( void );
 
 	virtual void		ItemPostFrame();
-	//virtual void		SpecialSuitAbilityPostFrame();
+	virtual void		SpecialSuitAbilityPostFrame();
 	virtual void		PlayUseDenySound();
 
 private:
@@ -329,7 +333,9 @@ protected:	// Jeep: Portal_Player needs access to this variable to overload Play
 
 private:
 
-
+#ifdef HL2_EP3
+	CSoundPatch* m_pWooshSound;
+#endif
 
 	CAI_Squad *			m_pPlayerAISquad;
 	CSimpleSimTimer		m_CommanderUpdateTimer;
