@@ -42,4 +42,10 @@ void RegisterUserMessages( void )
 	usermessages->Register( "LogoTimeMsg", 4 );
 	usermessages->Register( "AchievementEvent", -1 );
 	usermessages->Register( "UpdateJalopyRadar", -1 );
+
+#ifdef HL2_EP3
+	usermessages->Register("Splatter", 1);
+	usermessages->Register("AcidSplash", 8);
+	usermessages->Register("SplatterClear", -1);
+#endif
 }
