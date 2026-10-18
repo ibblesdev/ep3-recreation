@@ -153,6 +153,10 @@ ConVar	sk_max_hopwire			( "sk_max_hopwire", "3", FCVAR_REPLICATED);
 ConVar	sk_max_striderbuster	( "sk_max_striderbuster", "3", FCVAR_REPLICATED);
 #endif
 
+#ifdef HL2_EP3
+ConVar	sk_max_fuel("sk_max_fuel", "999", FCVAR_REPLICATED);
+#endif
+
 //ConVar sk_plr_dmg_brickbat	( "sk_plr_dmg_brickbat","0", FCVAR_REPLICATED);
 //ConVar sk_npc_dmg_brickbat	( "sk_npc_dmg_brickbat","0", FCVAR_REPLICATED);
 //ConVar sk_max_brickbat		( "sk_max_brickbat","0", FCVAR_REPLICATED);
@@ -1543,6 +1547,21 @@ bool CHalfLife2::ShouldCollide( int collisionGroup0, int collisionGroup1 )
 	if ( collisionGroup0 == COLLISION_GROUP_PLAYER_MOVEMENT && collisionGroup1 == HL2COLLISION_GROUP_SPIT )
 		return false;
 
+#ifdef HL2_EP3
+	if (collisionGroup1 == HL2COLLISION_GROUP_FUEL && collisionGroup0 != HL2COLLISION_GROUP_FIRE)
+		return false;
+
+	if (collisionGroup1 == HL2COLLISION_GROUP_FIRE)
+	{
+		if (collisionGroup0 == COLLISION_GROUP_WEAPON ||
+			collisionGroup0 == COLLISION_GROUP_PROJECTILE ||
+			collisionGroup0 == HL2COLLISION_GROUP_FIRE)
+		{
+			return false;
+		}
+	}
+#endif
+
 	// HL2 treats movement and tracing against players the same, so just remap here
 	if ( collisionGroup0 == COLLISION_GROUP_PLAYER_MOVEMENT )
 	{
@@ -1592,6 +1611,14 @@ bool CHalfLife2::ShouldCollide( int collisionGroup0, int collisionGroup1 )
 
 	if (collisionGroup0 == HL2COLLISION_GROUP_HOUNDEYE && collisionGroup1 == HL2COLLISION_GROUP_HOUNDEYE )
 		return false;
+
+#ifdef HL2_EP3
+	if (collisionGroup0 == HL2COLLISION_GROUP_BLOB && collisionGroup1 == HL2COLLISION_GROUP_BLOB_TINY)
+		return false;
+
+	if (collisionGroup0 == HL2COLLISION_GROUP_BLOB_TINY && collisionGroup1 == HL2COLLISION_GROUP_BLOB_TINY)
+		return false;
+#endif
 
 	if (collisionGroup0 == HL2COLLISION_GROUP_HOMING_MISSILE && collisionGroup1 == HL2COLLISION_GROUP_HOMING_MISSILE )
 		return false;
@@ -1685,6 +1712,21 @@ float CHalfLife2::AdjustPlayerDamageInflicted( float damage )
 		return damage;
 		break;
 	}
+}
+
+//---------------------------------------------------------
+//---------------------------------------------------------
+ConVar ice_falling_damage_scale("ice_falling_damage_scale", "0");
+float CHalfLife2::FlPlayerFallDamage(CBasePlayer* pPlayer)
+{
+	float flDamage = BaseClass::FlPlayerFallDamage(pPlayer);
+
+	if (pPlayer->GetGroundEntity() && FClassnameIs(pPlayer->GetGroundEntity(), "ice_sphere"))
+	{
+		flDamage *= ice_falling_damage_scale.GetFloat();
+	}
+
+	return flDamage;
 }
 #endif//CLIENT_DLL
 

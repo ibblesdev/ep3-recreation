@@ -38,6 +38,8 @@ public:
 	// TEMP:
 	virtual int				Damage_GetTimeBased( void );
 	
+	virtual float			FlPlayerFallDamage(CBasePlayer* pPlayer);
+
 	virtual bool			ShouldCollide( int collisionGroup0, int collisionGroup1 );
 	virtual bool			ShouldUseRobustRadiusDamage(CBaseEntity *pEntity);
 #ifndef CLIENT_DLL
