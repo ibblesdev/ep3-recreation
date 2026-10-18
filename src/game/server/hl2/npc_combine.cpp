@@ -30,8 +30,27 @@
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 #include "npc_headcrab.h"
 
+#include "ep3/weapon_teleport.h"	// properly guarded for #ifdef hl2_ep3 inside
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
+
+
+
+ConVar combine_teleport_goaldist_min("combine_teleport_goaldist_min", "48");
+ConVar combine_teleport_goaldist_max("combine_teleport_goaldist_max", "1536");
+
+ConVar combine_teleport_hopdist_min("combine_teleport_hopdist_min", "256");
+
+ConVar combine_teleport_noreload_dist_max("combine_teleport_noreload_dist_max", "512");
+
+ConVar combine_teleport_toss_delay("combine_teleport_toss_delay", "1.2");
+ConVar combine_teleport_toss_delay2("combine_teleport_toss_delay2", "5");
+
+ConVar combine_teleport_toss_height("combine_teleport_toss_height", "0.2");	// Height to length ratio
+
+
+
 
 int g_fCombineQuestion;				// true if an idle grunt asked a question. Cleared when someone answers. YUCK old global from grunt code
 
@@ -102,9 +121,11 @@ Activity ACT_WALK_MARCH;
 //	> Squad slots
 // -----------------------------------------------
 enum SquadSlot_T
-{	
+{
 	SQUAD_SLOT_GRENADE1 = LAST_SHARED_SQUADSLOT,
 	SQUAD_SLOT_GRENADE2,
+	SQUAD_SLOT_TELEPORT_FIRST,
+	SQUAD_SLOT_TELEPORT_LAST,
 	SQUAD_SLOT_ATTACK_OCCLUDER,
 	SQUAD_SLOT_OVERWATCH,
 };
@@ -131,24 +152,24 @@ LINK_ENTITY_TO_CLASS( npc_combine, CNPC_Combine );
 //---------------------------------------------------------
 // Save/Restore
 //---------------------------------------------------------
-BEGIN_DATADESC( CNPC_Combine )
+BEGIN_DATADESC(CNPC_Combine)
 
-DEFINE_FIELD( m_nKickDamage, FIELD_INTEGER ),
-DEFINE_FIELD( m_vecTossVelocity, FIELD_VECTOR ),
-DEFINE_FIELD( m_hForcedGrenadeTarget, FIELD_EHANDLE ),
-DEFINE_FIELD( m_bShouldPatrol, FIELD_BOOLEAN ),
-DEFINE_FIELD( m_bFirstEncounter, FIELD_BOOLEAN ),
-DEFINE_FIELD( m_flNextPainSoundTime, FIELD_TIME ),
-DEFINE_FIELD( m_flNextAlertSoundTime, FIELD_TIME ),
-DEFINE_FIELD( m_flNextGrenadeCheck, FIELD_TIME ),
-DEFINE_FIELD( m_flNextLostSoundTime, FIELD_TIME ),
-DEFINE_FIELD( m_flAlertPatrolTime, FIELD_TIME ),
-DEFINE_FIELD( m_flNextAltFireTime, FIELD_TIME ),
-DEFINE_FIELD( m_nShots, FIELD_INTEGER ),
-DEFINE_FIELD( m_flShotDelay, FIELD_FLOAT ),
-DEFINE_FIELD( m_flStopMoveShootTime, FIELD_TIME ),
-DEFINE_KEYFIELD( m_iNumGrenades, FIELD_INTEGER, "NumGrenades" ),
-DEFINE_EMBEDDED( m_Sentences ),
+DEFINE_FIELD(m_nKickDamage, FIELD_INTEGER),
+DEFINE_FIELD(m_vecTossVelocity, FIELD_VECTOR),
+DEFINE_FIELD(m_hForcedGrenadeTarget, FIELD_EHANDLE),
+DEFINE_FIELD(m_bShouldPatrol, FIELD_BOOLEAN),
+DEFINE_FIELD(m_bFirstEncounter, FIELD_BOOLEAN),
+DEFINE_FIELD(m_flNextPainSoundTime, FIELD_TIME),
+DEFINE_FIELD(m_flNextAlertSoundTime, FIELD_TIME),
+DEFINE_FIELD(m_flNextGrenadeCheck, FIELD_TIME),
+DEFINE_FIELD(m_flNextLostSoundTime, FIELD_TIME),
+DEFINE_FIELD(m_flAlertPatrolTime, FIELD_TIME),
+DEFINE_FIELD(m_flNextAltFireTime, FIELD_TIME),
+DEFINE_FIELD(m_nShots, FIELD_INTEGER),
+DEFINE_FIELD(m_flShotDelay, FIELD_FLOAT),
+DEFINE_FIELD(m_flStopMoveShootTime, FIELD_TIME),
+DEFINE_KEYFIELD(m_iNumGrenades, FIELD_INTEGER, "NumGrenades"),
+DEFINE_EMBEDDED(m_Sentences),
 
 //							m_AssaultBehavior (auto saved by AI)
 //							m_StandoffBehavior (auto saved by AI)
@@ -157,24 +178,24 @@ DEFINE_EMBEDDED( m_Sentences ),
 //							m_RappelBehavior (auto saved by AI)
 //							m_ActBusyBehavior (auto saved by AI)
 
-DEFINE_INPUTFUNC( FIELD_VOID,	"LookOff",	InputLookOff ),
-DEFINE_INPUTFUNC( FIELD_VOID,	"LookOn",	InputLookOn ),
+DEFINE_INPUTFUNC(FIELD_VOID, "LookOff", InputLookOff),
+DEFINE_INPUTFUNC(FIELD_VOID, "LookOn", InputLookOn),
 
-DEFINE_INPUTFUNC( FIELD_VOID,	"StartPatrolling",	InputStartPatrolling ),
-DEFINE_INPUTFUNC( FIELD_VOID,	"StopPatrolling",	InputStopPatrolling ),
+DEFINE_INPUTFUNC(FIELD_VOID, "StartPatrolling", InputStartPatrolling),
+DEFINE_INPUTFUNC(FIELD_VOID, "StopPatrolling", InputStopPatrolling),
 
 //DEFINE_INPUTFUNC( FIELD_STRING,	"Assault", InputAssault ),
 
-DEFINE_INPUTFUNC( FIELD_VOID,	"HitByBugbait",		InputHitByBugbait ),
+DEFINE_INPUTFUNC(FIELD_VOID, "HitByBugbait", InputHitByBugbait),
 
-DEFINE_INPUTFUNC( FIELD_STRING,	"ThrowGrenadeAtTarget",	InputThrowGrenadeAtTarget ),
+DEFINE_INPUTFUNC(FIELD_STRING, "ThrowGrenadeAtTarget", InputThrowGrenadeAtTarget),
 
-DEFINE_FIELD( m_iLastAnimEventHandled, FIELD_INTEGER ),
-DEFINE_FIELD( m_fIsElite, FIELD_BOOLEAN ),
-DEFINE_FIELD( m_vecAltFireTarget, FIELD_VECTOR ),
+DEFINE_FIELD(m_iLastAnimEventHandled, FIELD_INTEGER),
+DEFINE_FIELD(m_fIsElite, FIELD_BOOLEAN),
+DEFINE_FIELD(m_vecAltFireTarget, FIELD_VECTOR),
 
-DEFINE_KEYFIELD( m_iTacticalVariant, FIELD_INTEGER, "tacticalvariant" ),
-DEFINE_KEYFIELD( m_iPathfindingVariant, FIELD_INTEGER, "pathfindingvariant" ),
+DEFINE_KEYFIELD(m_iTacticalVariant, FIELD_INTEGER, "tacticalvariant"),
+DEFINE_KEYFIELD(m_iPathfindingVariant, FIELD_INTEGER, "pathfindingvariant"),
 
 END_DATADESC()
 
@@ -273,6 +294,30 @@ void CNPC_Combine::InputThrowGrenadeAtTarget( inputdata_t &inputdata )
 	ClearSchedule( "Told to throw grenade via input" );
 }
 
+void CNPC_Combine::InputThrowTeleportGrenadeAtTarget(inputdata_t& inputdata)
+{
+	// Ignore if we're inside a scripted sequence
+	if (m_NPCState == NPC_STATE_SCRIPT && m_hCine)
+		return;
+
+	CBaseEntity* pEntity = gEntList.FindEntityByName(NULL, inputdata.value.String(), NULL, inputdata.pActivator, inputdata.pCaller);
+	if (!pEntity)
+	{
+		DevMsg("%s (%s) received InputThrowTeleportGrenadeAtTarget input, but couldn't find target entity '%s'\n", GetClassname(), GetDebugName(), inputdata.value.String());
+		return;
+	}
+
+	m_hForcedGrenadeTarget = pEntity;
+	m_hTeleportProjectileForcedTarget = pEntity;
+	m_flNextTeleportGrenadeTime = 0;
+	m_flLastTeleportGrenadeTime = 0;
+
+	if (!m_hTeleportProjectile.Get())
+	{
+		ClearSchedule("Told to throw teleport grenade via input");
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
@@ -316,6 +361,8 @@ void CNPC_Combine::Spawn( void )
 	m_flNextPainSoundTime	= 0;
 	m_flNextAlertSoundTime	= 0;
 	m_bShouldPatrol			= false;
+	m_flNextTeleportGrenadeTime = 0;
+	m_flLastTeleportGrenadeTime = 0;
 
 	//	CapabilitiesAdd( bits_CAP_TURN_HEAD | bits_CAP_MOVE_GROUND | bits_CAP_MOVE_JUMP | bits_CAP_MOVE_CLIMB);
 	// JAY: Disabled jump for now - hard to compare to HL1
@@ -1026,7 +1073,7 @@ void CNPC_Combine::StartTask( const Task_t *pTask )
 //=========================================================
 // RunTask
 //=========================================================
-void CNPC_Combine::RunTask( const Task_t *pTask )
+void CNPC_Combine::RunTask(const Task_t* pTask)
 {
 	/*
 	{
@@ -1049,127 +1096,207 @@ void CNPC_Combine::RunTask( const Task_t *pTask )
 	}
 	*/
 
-	switch ( pTask->iTask )
+	switch (pTask->iTask)
 	{
 	case TASK_COMBINE_CHASE_ENEMY_CONTINUOUSLY:
-		RunTaskChaseEnemyContinuously( pTask );
+		RunTaskChaseEnemyContinuously(pTask);
 		break;
 
 	case TASK_COMBINE_SIGNAL_BEST_SOUND:
-		AutoMovement( );
-		if ( IsActivityFinished() )
+		AutoMovement();
+		if (IsActivityFinished())
 		{
 			TaskComplete();
 		}
 		break;
 
 	case TASK_ANNOUNCE_ATTACK:
+	{
+		// Stop waiting if enemy facing me or lost enemy
+		CBaseCombatCharacter* pBCC = GetEnemyCombatCharacterPointer();
+		if (!pBCC || pBCC->FInViewCone(this))
 		{
-			// Stop waiting if enemy facing me or lost enemy
-			CBaseCombatCharacter* pBCC = GetEnemyCombatCharacterPointer();
-			if	(!pBCC || pBCC->FInViewCone( this ))
-			{
-				TaskComplete();
-			}
-
-			if ( IsWaitFinished() )
-			{
-				TaskComplete();
-			}
+			TaskComplete();
 		}
-		break;
+
+		if (IsWaitFinished())
+		{
+			TaskComplete();
+		}
+	}
+	break;
 
 	case TASK_COMBINE_PLAY_SEQUENCE_FACE_ALTFIRE_TARGET:
-		GetMotor()->SetIdealYawToTargetAndUpdate( m_vecAltFireTarget, AI_KEEP_YAW_SPEED );
+		GetMotor()->SetIdealYawToTargetAndUpdate(m_vecAltFireTarget, AI_KEEP_YAW_SPEED);
 
-		if ( IsActivityFinished() )
+		if (IsActivityFinished())
 		{
 			TaskComplete();
 		}
 		break;
 
 	case TASK_COMBINE_FACE_TOSS_DIR:
-		{
-			// project a point along the toss vector and turn to face that point.
-			GetMotor()->SetIdealYawToTargetAndUpdate( GetLocalOrigin() + m_vecTossVelocity * 64, AI_KEEP_YAW_SPEED );
+	{
+		// project a point along the toss vector and turn to face that point.
+		GetMotor()->SetIdealYawToTargetAndUpdate(GetLocalOrigin() + m_vecTossVelocity * 64, AI_KEEP_YAW_SPEED);
 
-			if ( FacingIdeal() )
-			{
-				TaskComplete( true );
-			}
-			break;
+		if (FacingIdeal())
+		{
+			TaskComplete(true);
 		}
+		break;
+	}
 
 	case TASK_COMBINE_GET_PATH_TO_FORCED_GREN_LOS:
+	{
+		if (!m_hForcedGrenadeTarget)
 		{
-			if ( !m_hForcedGrenadeTarget )
-			{
-				TaskFail(FAIL_NO_ENEMY);
-				return;
-			}
+			TaskFail(FAIL_NO_ENEMY);
+			return;
+		}
 
-			if ( GetTaskInterrupt() > 0 )
-			{
-				ClearTaskInterrupt();
+		if (GetTaskInterrupt() > 0)
+		{
+			ClearTaskInterrupt();
 
-				Vector vecEnemy = m_hForcedGrenadeTarget->GetAbsOrigin();
-				AI_NavGoal_t goal( m_vInterruptSavePosition, ACT_RUN, AIN_HULL_TOLERANCE );
+			Vector vecEnemy = m_hForcedGrenadeTarget->GetAbsOrigin();
+			AI_NavGoal_t goal(m_vInterruptSavePosition, ACT_RUN, AIN_HULL_TOLERANCE);
 
-				GetNavigator()->SetGoal( goal, AIN_CLEAR_TARGET );
-				GetNavigator()->SetArrivalDirection( vecEnemy - goal.dest );
-			}
-			else
+			GetNavigator()->SetGoal(goal, AIN_CLEAR_TARGET);
+			GetNavigator()->SetArrivalDirection(vecEnemy - goal.dest);
+		}
+		else
+		{
+			TaskInterrupt();
+		}
+	}
+	break;
+
+	case TASK_RANGE_ATTACK1:
+	{
+		AutoMovement();
+
+		Vector vecEnemyLKP = GetEnemyLKP();
+		if (!FInAimCone(vecEnemyLKP))
+		{
+			GetMotor()->SetIdealYawToTargetAndUpdate(vecEnemyLKP, AI_KEEP_YAW_SPEED);
+		}
+		else
+		{
+			GetMotor()->SetIdealYawAndUpdate(GetMotor()->GetIdealYaw(), AI_KEEP_YAW_SPEED);
+		}
+
+		if (gpGlobals->curtime >= m_flNextAttack)
+		{
+			if (IsActivityFinished())
 			{
-				TaskInterrupt();
+				if (--m_nShots > 0)
+				{
+					// DevMsg("ACT_RANGE_ATTACK1\n");
+					ResetIdealActivity(ACT_RANGE_ATTACK1);
+					m_flLastAttackTime = gpGlobals->curtime;
+					m_flNextAttack = gpGlobals->curtime + m_flShotDelay - 0.1;
+				}
+				else
+				{
+					// DevMsg("TASK_RANGE_ATTACK1 complete\n");
+					TaskComplete();
+				}
 			}
+		}
+		else
+		{
+			// DevMsg("Wait\n");
+		}
+	}
+	break;
+
+	case TASK_WAIT_FOR_TELEPORT:
+		// Waiting for teleportation to occur
+		if (!m_hTeleportProjectile.Get())
+		{
+			OnTeleportProjectileAction(NULL, true);
+			TaskComplete();
+		}
+		else
+			// Teleport projectile is still flying
+		{
+			// TODO: play out effect
 		}
 		break;
 
-	case TASK_RANGE_ATTACK1:
+	case TASK_ADVISOR_LEVITATE:
+		/*
+#ifdef HL2_EP3
+		if (Advisor_IsLevitating())
 		{
-			AutoMovement( );
-
+			// Keep facing our enemy
 			Vector vecEnemyLKP = GetEnemyLKP();
-			if (!FInAimCone( vecEnemyLKP ))
-			{
-				GetMotor()->SetIdealYawToTargetAndUpdate( vecEnemyLKP, AI_KEEP_YAW_SPEED );
-			}
-			else
-			{
-				GetMotor()->SetIdealYawAndUpdate( GetMotor()->GetIdealYaw(), AI_KEEP_YAW_SPEED );
-			}
+			GetMotor()->SetIdealYawToTargetAndUpdate(vecEnemyLKP, AI_KEEP_YAW_SPEED);
 
-			if ( gpGlobals->curtime >= m_flNextAttack )
+			// When facing our enemy keep firing
+			if (gpGlobals->curtime >= m_flNextAttack)
 			{
-				if ( IsActivityFinished() )
-				{
-					if (--m_nShots > 0)
-					{
-						// DevMsg("ACT_RANGE_ATTACK1\n");
-						ResetIdealActivity( ACT_RANGE_ATTACK1 );
-						m_flLastAttackTime = gpGlobals->curtime;
-						m_flNextAttack = gpGlobals->curtime + m_flShotDelay - 0.1;
-					}
-					else
-					{
-						// DevMsg("TASK_RANGE_ATTACK1 complete\n");
-						TaskComplete();
-					}
-				}
+				FullyLoadWeaponClips();
+
+				ResetIdealActivity(ACT_RANGE_ATTACK1);
+				m_flLastAttackTime = gpGlobals->curtime;
+				m_flNextAttack = gpGlobals->curtime + m_flShotDelay - 0.1;
 			}
-			else
-			{
-				// DevMsg("Wait\n");
-			}
+		}
+		else
+#endif
+		*/
+		{
+			TaskComplete();
 		}
 		break;
 
 	default:
-		{
-			BaseClass::RunTask( pTask );
-			break;
-		}
+	{
+		BaseClass::RunTask(pTask);
+		break;
 	}
+	}
+}
+
+void CNPC_Combine::VPhysicsUpdate(IPhysicsObject* pPhysics)
+{
+	/*
+#ifdef HL2_EP3
+	if (Advisor_IsLevitating())
+	{
+		// Set our base position
+		Vector wPosition;
+		QAngle wAngles;
+		pPhysics->GetPosition(&wPosition, &wAngles);
+
+		Vector wVelocity;
+		AngularImpulse wAngVelocity;
+		pPhysics->GetVelocity(&wVelocity, &wAngVelocity);
+
+		SetAbsOrigin(wPosition);
+		SetAbsVelocity(wVelocity);
+	}
+#endif
+	*/
+	BaseClass::VPhysicsUpdate(pPhysics);
+}
+
+void CNPC_Combine::UpdateOnRemove()
+{
+	BaseClass::UpdateOnRemove();
+}
+
+
+void CNPC_Combine::Advisor_OnStartedLevitating()
+{
+	TaskInterrupt();
+}
+
+void CNPC_Combine::Advisor_OnFinishedLevitating()
+{
+	TaskInterrupt();
 }
 
 //------------------------------------------------------------------------------
@@ -1685,106 +1812,133 @@ int CNPC_Combine::SelectCombatSchedule()
 // Input  :
 // Output :
 //-----------------------------------------------------------------------------
-int CNPC_Combine::SelectSchedule( void )
+int CNPC_Combine::SelectSchedule(void)
 {
-	if ( IsWaitingToRappel() && BehaviorSelectSchedule() )
+	if (IsWaitingToRappel() && BehaviorSelectSchedule())
 	{
 		return BaseClass::SelectSchedule();
 	}
 
-	if ( HasCondition(COND_COMBINE_ON_FIRE) )
+	if (HasCondition(COND_COMBINE_ON_FIRE))
 		return SCHED_COMBINE_BURNING_STAND;
 
 	int nSched = SelectFlinchSchedule();
-	if ( nSched != SCHED_NONE )
+	if (nSched != SCHED_NONE)
 		return nSched;
 
-	if ( m_hForcedGrenadeTarget )
+	if (m_hForcedGrenadeTarget)
 	{
-		if ( m_flNextGrenadeCheck < gpGlobals->curtime )
-		{
-			Vector vecTarget = m_hForcedGrenadeTarget->WorldSpaceCenter();
+		Vector vecTarget = m_hForcedGrenadeTarget->WorldSpaceCenter();
 
-			if ( IsElite() )
+		if (m_hTeleportProjectileForcedTarget)
+		{
+			if (CanTossTeleportGrenade(vecTarget))
 			{
-				if ( FVisible( m_hForcedGrenadeTarget ) )
-				{
-					m_vecAltFireTarget = vecTarget;
-					m_hForcedGrenadeTarget = NULL;
-					return SCHED_COMBINE_AR2_ALTFIRE;
-				}
+				m_hTeleportProjectileForcedTarget = NULL;
+				m_hForcedGrenadeTarget = NULL;
+				return SCHED_COMBINE_FORCED_TELEPORT_GRENADE_THROW;
 			}
-			else
+		}
+		else
+		{
+			if (m_flNextGrenadeCheck < gpGlobals->curtime)
 			{
-				// If we can, throw a grenade at the target. 
-				// Ignore grenade count / distance / etc
-				if ( CheckCanThrowGrenade( vecTarget ) )
+				if (IsElite())
 				{
-					m_hForcedGrenadeTarget = NULL;
-					return SCHED_COMBINE_FORCED_GRENADE_THROW;
+					if (FVisible(m_hForcedGrenadeTarget))
+					{
+						m_vecAltFireTarget = vecTarget;
+						m_hForcedGrenadeTarget = NULL;
+						return SCHED_COMBINE_AR2_ALTFIRE;
+					}
+				}
+				else
+				{
+					// If we can, throw a grenade at the target. 
+					// Ignore grenade count / distance / etc
+					if (CheckCanThrowGrenade(vecTarget))
+					{
+						m_hForcedGrenadeTarget = NULL;
+						return SCHED_COMBINE_FORCED_GRENADE_THROW;
+					}
 				}
 			}
 		}
 
 		// Can't throw at the target, so lets try moving to somewhere where I can see it
-		if ( !FVisible( m_hForcedGrenadeTarget ) )
+		if (!FVisible(m_hForcedGrenadeTarget))
 		{
 			return SCHED_COMBINE_MOVE_TO_FORCED_GREN_LOS;
 		}
 	}
 
-	if ( m_NPCState != NPC_STATE_SCRIPT)
+	/*
+#ifdef HL2_EP3
+	if (Advisor_IsLevitating())
+	{
+		return SCHED_COMBINE_ADVISOR_LEVITATE;
+	}
+#endif
+	*/
+
+	if (m_hTeleportProjectile.IsValid())
+	{
+		// Due to teleportation previous schedule could have been interrupted
+		OnTeleportProjectileAction(NULL, false);
+	}
+
+	if (m_NPCState != NPC_STATE_SCRIPT)
 	{
 		// If we're hit by bugbait, thrash around
-		if ( HasCondition( COND_COMBINE_HIT_BY_BUGBAIT ) )
+		if (HasCondition(COND_COMBINE_HIT_BY_BUGBAIT))
 		{
 			// Don't do this if we're mounting a func_tank
-			if ( m_FuncTankBehavior.IsMounted() == true )
+			if (m_FuncTankBehavior.IsMounted() == true)
 			{
 				m_FuncTankBehavior.Dismount();
 			}
 
-			ClearCondition( COND_COMBINE_HIT_BY_BUGBAIT );
+			ClearCondition(COND_COMBINE_HIT_BY_BUGBAIT);
 			return SCHED_COMBINE_BUGBAIT_DISTRACTION;
 		}
 
 		// We've been told to move away from a target to make room for a grenade to be thrown at it
-		if ( HasCondition( COND_HEAR_MOVE_AWAY ) )
+		if (HasCondition(COND_HEAR_MOVE_AWAY))
 		{
 			return SCHED_MOVE_AWAY;
 		}
 
 		// These things are done in any state but dead and prone
-		if (m_NPCState != NPC_STATE_DEAD && m_NPCState != NPC_STATE_PRONE )
+		if (m_NPCState != NPC_STATE_DEAD && m_NPCState != NPC_STATE_PRONE)
 		{
 			// Cower when physics objects are thrown at me
-			if ( HasCondition( COND_HEAR_PHYSICS_DANGER ) )
+			if (HasCondition(COND_HEAR_PHYSICS_DANGER))
 			{
 				return SCHED_FLINCH_PHYSICS;
 			}
 
 			// grunts place HIGH priority on running away from danger sounds.
-			if ( HasCondition(COND_HEAR_DANGER) )
+			if (HasCondition(COND_HEAR_DANGER))
 			{
-				CSound *pSound;
+				CSound* pSound;
 				pSound = GetBestSound();
 
-				Assert( pSound != NULL );
-				if ( pSound)
+				Assert(pSound != NULL);
+				if (pSound)
 				{
 					if (pSound->m_iType & SOUND_DANGER)
 					{
 						// I hear something dangerous, probably need to take cover.
 						// dangerous sound nearby!, call it out
-						const char *pSentenceName = "COMBINE_DANGER";
+						const char* pSentenceName = "COMBINE_DANGER";
 
-						CBaseEntity *pSoundOwner = pSound->m_hOwner;
-						if ( pSoundOwner )
+						CBaseEntity* pSoundOwner = pSound->m_hOwner;
+						if (pSoundOwner)
 						{
-							CBaseGrenade *pGrenade = dynamic_cast<CBaseGrenade *>(pSoundOwner);
-							if ( pGrenade && pGrenade->GetThrower() )
+							CBaseGrenade* pGrenade = dynamic_cast<CBaseGrenade*>(pSoundOwner);
+							if (pGrenade && pGrenade->GetThrower())
 							{
-								if ( IRelationType( pGrenade->GetThrower() ) != D_LI )
+								if (IRelationType(pGrenade->GetThrower()) != D_LI)
 								{
 									// special case call out for enemy grenades
 									pSentenceName = "COMBINE_GREN";
@@ -1792,12 +1946,12 @@ int CNPC_Combine::SelectSchedule( void )
 							}
 						}
 
-						m_Sentences.Speak( pSentenceName, SENTENCE_PRIORITY_NORMAL, SENTENCE_CRITERIA_NORMAL );
+						m_Sentences.Speak(pSentenceName, SENTENCE_PRIORITY_NORMAL, SENTENCE_CRITERIA_NORMAL);
 
 						// If the sound is approaching danger, I have no enemy, and I don't see it, turn to face.
-						if( !GetEnemy() && pSound->IsSoundType(SOUND_CONTEXT_DANGER_APPROACH) && pSound->m_hOwner && !FInViewCone(pSound->GetSoundReactOrigin()) )
+						if (!GetEnemy() && pSound->IsSoundType(SOUND_CONTEXT_DANGER_APPROACH) && pSound->m_hOwner && !FInViewCone(pSound->GetSoundReactOrigin()))
 						{
-							GetMotor()->SetIdealYawToTarget( pSound->GetSoundReactOrigin() );
+							GetMotor()->SetIdealYawToTarget(pSound->GetSoundReactOrigin());
 							return SCHED_COMBINE_FACE_IDEAL_YAW;
 						}
 
@@ -1805,70 +1959,70 @@ int CNPC_Combine::SelectSchedule( void )
 					}
 
 					// JAY: This was disabled in HL1.  Test?
-					if (!HasCondition( COND_SEE_ENEMY ) && ( pSound->m_iType & (SOUND_PLAYER | SOUND_COMBAT) ))
+					if (!HasCondition(COND_SEE_ENEMY) && (pSound->m_iType & (SOUND_PLAYER | SOUND_COMBAT)))
 					{
-						GetMotor()->SetIdealYawToTarget( pSound->GetSoundReactOrigin() );
+						GetMotor()->SetIdealYawToTarget(pSound->GetSoundReactOrigin());
 					}
 				}
 			}
 		}
 
-		if( BehaviorSelectSchedule() )
+		if (BehaviorSelectSchedule())
 		{
 			return BaseClass::SelectSchedule();
 		}
 	}
 
-	switch	( m_NPCState )
+	switch (m_NPCState)
 	{
 	case NPC_STATE_IDLE:
-		{
-			if ( m_bShouldPatrol )
-				return SCHED_COMBINE_PATROL;
-		}
-		// NOTE: Fall through!
+	{
+		if (m_bShouldPatrol)
+			return SCHED_COMBINE_PATROL;
+	}
+	// NOTE: Fall through!
 
 	case NPC_STATE_ALERT:
+	{
+		if (HasCondition(COND_LIGHT_DAMAGE) || HasCondition(COND_HEAVY_DAMAGE))
 		{
-			if( HasCondition(COND_LIGHT_DAMAGE) || HasCondition(COND_HEAVY_DAMAGE) )
+			AI_EnemyInfo_t* pDanger = GetEnemies()->GetDangerMemory();
+			if (pDanger && FInViewCone(pDanger->vLastKnownLocation) && !BaseClass::FVisible(pDanger->vLastKnownLocation))
 			{
-				AI_EnemyInfo_t *pDanger = GetEnemies()->GetDangerMemory();
-				if( pDanger && FInViewCone(pDanger->vLastKnownLocation) && !BaseClass::FVisible(pDanger->vLastKnownLocation) )
-				{
-					// I've been hurt, I'm facing the danger, but I don't see it, so move from this position.
-					return SCHED_TAKE_COVER_FROM_ORIGIN;
-				}
-			}
-
-			if( HasCondition( COND_HEAR_COMBAT ) )
-			{
-				CSound *pSound = GetBestSound();
-
-				if( pSound && pSound->IsSoundType( SOUND_COMBAT ) )
-				{
-					if( m_pSquad && m_pSquad->GetSquadMemberNearestTo( pSound->GetSoundReactOrigin() ) == this && OccupyStrategySlot( SQUAD_SLOT_INVESTIGATE_SOUND ) )
-					{
-						return SCHED_INVESTIGATE_SOUND;
-					}
-				}
-			}
-
-			// Don't patrol if I'm in the middle of an assault, because I'll never return to the assault. 
-			if ( !m_AssaultBehavior.HasAssaultCue() )
-			{
-				if( m_bShouldPatrol || HasCondition( COND_COMBINE_SHOULD_PATROL ) )
-					return SCHED_COMBINE_PATROL;
+				// I've been hurt, I'm facing the danger, but I don't see it, so move from this position.
+				return SCHED_TAKE_COVER_FROM_ORIGIN;
 			}
 		}
-		break;
+
+		if (HasCondition(COND_HEAR_COMBAT))
+		{
+			CSound* pSound = GetBestSound();
+
+			if (pSound && pSound->IsSoundType(SOUND_COMBAT))
+			{
+				if (m_pSquad && m_pSquad->GetSquadMemberNearestTo(pSound->GetSoundReactOrigin()) == this && OccupyStrategySlot(SQUAD_SLOT_INVESTIGATE_SOUND))
+				{
+					return SCHED_INVESTIGATE_SOUND;
+				}
+			}
+		}
+
+		// Don't patrol if I'm in the middle of an assault, because I'll never return to the assault. 
+		if (!m_AssaultBehavior.HasAssaultCue())
+		{
+			if (m_bShouldPatrol || HasCondition(COND_COMBINE_SHOULD_PATROL))
+				return SCHED_COMBINE_PATROL;
+		}
+	}
+	break;
 
 	case NPC_STATE_COMBAT:
-		{
-			int nSched = SelectCombatSchedule();
-			if ( nSched != SCHED_NONE )
-				return nSched;
-		}
-		break;
+	{
+		int nSched = SelectCombatSchedule();
+		if (nSched != SCHED_NONE)
+			return nSched;
+	}
+	break;
 	}
 
 	// no special cases here, call the base class
@@ -2964,6 +3118,404 @@ bool CNPC_Combine::CanGrenadeEnemy( bool bUseFreeKnowledge )
 	}
 
 	return false;
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+bool CNPC_Combine::ComputeTeleportToss(bool bUseFreeKnowledge, bool bPreferCoverPos,
+	float flAngMin, float flAngMax, float flAngPreference,
+	float flDistMin, float flDistMax, float flDistPreference,
+	float flTravelMinDist, float flTravelMaxDist, float flTravelDistPreference)
+{
+	if (!m_iTeleportGrenades)
+		return false;
+
+	if (gpGlobals->curtime < m_flNextTeleportGrenadeTime)
+		return false;
+
+	CBaseEntity* pEnemy = GetEnemy();
+	if (!pEnemy)
+		return false;
+
+	Vector vecEnemyPosition;
+	Vector vecAiPosition = GetAbsOrigin();
+
+	if (bUseFreeKnowledge)
+	{
+		vecEnemyPosition = GetEnemies()->LastKnownPosition(pEnemy);
+	}
+	else
+	{
+		vecEnemyPosition = GetEnemies()->LastSeenPosition(pEnemy);
+	}
+
+	Vector vecEnemyEyePosition = vecEnemyPosition + pEnemy->GetViewOffset();
+	Vector vecEnemyToAi = vecAiPosition - vecEnemyPosition;
+
+	Vector vecEnemyToAiNorm = vecEnemyToAi;
+	vecEnemyToAiNorm.NormalizeInPlace();
+
+	if (!CAI_NetworkManager::NetworksLoaded())
+		return false;
+
+	Remember(bits_MEMORY_TASK_EXPENSIVE);
+
+	CAI_Network* pAiNwk = GetNavigator()->GetNetwork();
+
+	int iAiNode = GetPathfinder()->NearestNodeToPoint(vecAiPosition);
+	if (iAiNode == NO_NODE)
+	{
+		Vector pos = GetAbsOrigin();
+		DevWarning(2, "ComputeTeleportToss() - has no nearest node (check near %f %f %f)\n", pos.x, pos.y, pos.z);
+		return false;
+	}
+
+	// ------------------------------------------------------------------------------------
+	// We're going to search for a node by expanding to our current node's neighbors
+	// and then their neighbors, until enough good nodes are found,
+	// or all nodes are beyond TravelMaxDist
+	// ------------------------------------------------------------------------------------
+
+	AI_NearNode_t* pBuffer = (AI_NearNode_t*)stackalloc(sizeof(AI_NearNode_t) * pAiNwk->NumNodes());
+	CNodeList list(pBuffer, pAiNwk->NumNodes());
+	CVarBitVec wasVisited(pAiNwk->NumNodes());	// Nodes visited
+
+	const int nMaxCollectedNodes = 10;
+	CUtlVectorFixed< CAI_Node*, nMaxCollectedNodes > arrCollectedNodes;
+	CUtlVectorFixed< bool, nMaxCollectedNodes > arrCollectedNodes_bCover;
+	CUtlVectorFixed< float, nMaxCollectedNodes > arrCollectedNodes_flAngle;
+	CUtlVectorFixed< float, nMaxCollectedNodes > arrCollectedNodes_flTravelDistSq;
+	CUtlVectorFixed< float, nMaxCollectedNodes > arrCollectedNodes_flGoalDistSq;
+	CUtlVectorFixed< int, nMaxCollectedNodes > arrCollectedNodes_nZone;
+	CUtlVectorFixed< Vector, nMaxCollectedNodes > arrCollectedNodes_vecToss;
+
+	const int nSubdivAngle = 4;
+	const int nSubdivGoalDist = 4;
+	CVarBitVec wasZoneCollected(2 * nSubdivAngle * nSubdivGoalDist);
+
+#define COMBINE_COLLECT_ZONE_MAKE( nRight, nAngle, nGoal ) ( (nRight) * nSubdivAngle * nSubdivGoalDist + (nGoal) * nSubdivAngle + (nAngle) )
+#define COMBINE_COLLECT_ZONE_GET_ANGLE( nZone ) ( (nZone) % ( nSubdivAngle * nSubdivGoalDist ) % nSubdivAngle )
+#define COMBINE_COLLECT_ZONE_GET_DIST( nZone ) ( (nZone) % ( nSubdivAngle * nSubdivGoalDist ) / nSubdivAngle )
+#define COMBINE_COLLECT_ZONE_GET_RIGHT( nZone ) ( (nZone) / ( nSubdivAngle * nSubdivGoalDist ) )
+
+	bool bCollectedCoverNodes = false;
+
+	// Mark start as visited
+	list.Insert(AI_NearNode_t(iAiNode, 0));
+	wasVisited.Set(iAiNode);
+	float flTravelDistSqMin = flTravelMinDist * flTravelMinDist;
+	float flTravelDistSqMax = flTravelMaxDist * flTravelMaxDist;
+	float flGoalDistSqMin = flDistMin * flDistMin;
+	float flGoalDistSqMax = flDistMax * flDistMax;
+
+	static int nSearchRandomizer = 0;
+
+	// Search
+	while (list.Count() &&
+		arrCollectedNodes.Count() < nMaxCollectedNodes)
+	{
+		AI_NearNode_t nearNode = list.ElementAtHead();
+		int nodeIndex = nearNode.nodeIndex;
+		list.RemoveAtHead();
+
+		CAI_Node* pNode = pAiNwk->GetNode(nodeIndex);
+		Vector posNode = pNode->GetPosition(GetHullType());
+
+		float flDistSq = nearNode.dist;
+
+		Vector vecEnemyToNode = posNode - vecEnemyPosition;
+		float flGoalDistSq = vecEnemyToNode.LengthSqr();
+
+		if (flDistSq >= flTravelDistSqMin &&
+			flDistSq <= flTravelDistSqMax &&
+			flGoalDistSq >= flGoalDistSqMin &&
+			flGoalDistSq <= flGoalDistSqMax)
+		{
+			// This node is usable, check inputs
+
+			bool bNodeCollected = false;
+
+			if (bPreferCoverPos)
+			{
+				Activity nAiCoverActivity = GetCoverActivity(pNode->GetHint());
+				Vector vAiEyePos = posNode + EyeOffset(nAiCoverActivity);
+
+				if (IsValidCover(posNode, pNode->GetHint()) &&
+					IsCoverPosition(vecEnemyEyePosition, vAiEyePos) &&
+					CanTossTeleportGrenade(posNode))
+				{
+					pNode->Lock(1.0);
+
+					if (pNode->GetHint() && (
+						pNode->GetHint()->HintType() == HINT_TACTICAL_COVER_MED ||
+						pNode->GetHint()->HintType() == HINT_TACTICAL_COVER_LOW))
+					{
+						if (GetHintNode())
+						{
+							GetHintNode()->Unlock(GetHintDelay(GetHintNode()->HintType()));
+							SetHintNode(NULL);
+						}
+
+						SetHintNode(pNode->GetHint());
+					}
+
+					bCollectedCoverNodes = true;
+
+					nSearchRandomizer = nodeIndex;
+
+					arrCollectedNodes.AddToTail(pNode);
+					arrCollectedNodes_bCover.AddToTail(true);
+					arrCollectedNodes_flAngle.AddToTail(0.0f);
+					arrCollectedNodes_flTravelDistSq.AddToTail(flDistSq);
+					arrCollectedNodes_flGoalDistSq.AddToTail(flGoalDistSq);
+					arrCollectedNodes_nZone.AddToTail(-1);
+					arrCollectedNodes_vecToss.AddToTail(m_vecTossVelocity);
+					bNodeCollected = true;
+				}
+			}
+
+			bool bShouldConsiderForLos = !bNodeCollected;
+			if (bPreferCoverPos &&
+				arrCollectedNodes.Count() > nMaxCollectedNodes / 2)
+				bShouldConsiderForLos = false;
+
+			if (bShouldConsiderForLos)
+			{
+				// Check angles
+				Vector vecEnemyToNodeNorm = vecEnemyToNode;
+				vecEnemyToNodeNorm.NormalizeInPlace();
+
+				float flDot = DotProduct(vecEnemyToAiNorm, vecEnemyToNodeNorm);
+				float flDegrees = RAD2DEG(acos(flDot));
+
+				if (flDegrees >= flAngMin && flDegrees <= flAngMax)
+				{
+					// Determine the zone of this los node
+					int nZoneDegree = (flDegrees - flAngMin) * nSubdivAngle / (0.001 + flAngMax - flAngMin);
+					float flGoalDist = sqrt(flGoalDistSq);
+					int nZoneGoal = (flGoalDist - flDistMin) * nSubdivGoalDist / (0.001 + flDistMax - flDistMin);
+
+					// Determine side
+					Vector vecCross = vecEnemyToAiNorm.Cross(vecEnemyToNodeNorm);
+					int nRight = (vecCross.z > 0) ? 1 : 0;
+
+					int nZone = COMBINE_COLLECT_ZONE_MAKE(nRight, nZoneDegree, nZoneGoal);
+
+					if (!wasZoneCollected.IsBitSet(nZone) &&
+						CanTossTeleportGrenade(posNode))
+					{
+						nSearchRandomizer = nodeIndex;
+
+						arrCollectedNodes.AddToTail(pNode);
+						arrCollectedNodes_bCover.AddToTail(false);
+						arrCollectedNodes_flAngle.AddToTail(flDegrees);
+						arrCollectedNodes_flTravelDistSq.AddToTail(flDistSq);
+						arrCollectedNodes_flGoalDistSq.AddToTail(flGoalDistSq);
+						arrCollectedNodes_nZone.AddToTail(nZone);
+						arrCollectedNodes_vecToss.AddToTail(m_vecTossVelocity);
+
+						bNodeCollected = true;
+						wasZoneCollected.Set(nZone);
+					}
+				}
+			}
+		}
+
+		for (int link = 0, numLinks = pNode->NumLinks();
+			link < numLinks; ++link)
+		{
+			int idxLink = (link + nSearchRandomizer) % numLinks;
+			CAI_Link* pLink = pNode->GetLinkByIndex(idxLink);
+
+			// Teleporting system doesn't care if link was marked as unusable
+
+			int linkNodeId = pLink->DestNodeID(nodeIndex);
+			if (!wasVisited.IsBitSet(linkNodeId))
+			{
+				wasVisited.Set(linkNodeId);
+				CAI_Node* pLinkedNode = pAiNwk->GetNode(linkNodeId);
+				if (pLinkedNode->IsLocked())
+					continue;
+
+				float distSq2 = (pLinkedNode->GetPosition(GetHullType()) - vecAiPosition).LengthSqr();
+				if (distSq2 > flTravelDistSqMax)
+					continue; // reject links that lead us out of our max-travel-dist
+
+				list.Insert(AI_NearNode_t(linkNodeId, distSq2));
+			}
+		}
+	}
+
+	int numNodesCollected = arrCollectedNodes.Count();
+	if (!numNodesCollected)
+		return false;
+
+	// Now scan over the collected nodes and pick which ones we would prefer
+	if (bPreferCoverPos && bCollectedCoverNodes)
+	{
+		int k = 0;
+		int nBestNode = 0;
+		for (; k < numNodesCollected; ++k)
+		{
+			if (!arrCollectedNodes_bCover[k])
+				continue;
+			nBestNode = k;
+			break;
+		}
+		for (++k; k < numNodesCollected; ++k)
+		{
+			if (!arrCollectedNodes_bCover[k])
+				continue;
+
+			// Cover nodes are compared by distance from player
+			if (arrCollectedNodes_flGoalDistSq[k] > arrCollectedNodes_flGoalDistSq[nBestNode])
+				nBestNode = k;
+		}
+
+		// Set toss velocity
+		m_vecTossVelocity = arrCollectedNodes_vecToss[nBestNode];
+		return true;
+	}
+	else
+	{
+		int nIdealZoneAngle = ((flAngPreference + 1.0 - 0.001) / 2.0) * nSubdivAngle;
+		int nBestNode = 0;
+		int nBestNodeZoneAngle = COMBINE_COLLECT_ZONE_GET_ANGLE(arrCollectedNodes_nZone[0]);
+		for (int k = 1; k < numNodesCollected; ++k)
+		{
+			// Los nodes are compared by gained angle from player
+			int nNodeZoneAngle = COMBINE_COLLECT_ZONE_GET_ANGLE(arrCollectedNodes_nZone[k]);
+			if (abs(nNodeZoneAngle - nIdealZoneAngle) <
+				abs(nBestNodeZoneAngle - nIdealZoneAngle))
+			{
+				nBestNode = k;
+				nBestNodeZoneAngle = nNodeZoneAngle;
+			}
+			else if (abs(nNodeZoneAngle - nIdealZoneAngle) ==
+				abs(nBestNodeZoneAngle - nIdealZoneAngle))
+			{
+				// Consider dist
+				int nDistDiff = arrCollectedNodes_flGoalDistSq[k] - arrCollectedNodes_flGoalDistSq[nBestNode];
+				if (!(nDistDiff > 0) == !(flDistPreference > 0))
+				{
+					nBestNode = k;
+					nBestNodeZoneAngle = nNodeZoneAngle;
+				}
+			}
+		}
+
+		// Set toss velocity
+		m_vecTossVelocity = arrCollectedNodes_vecToss[nBestNode];
+		return true;
+	}
+
+	return false;
+}
+
+bool CNPC_Combine::CanTeleportFromEnemy(bool bUseFreeKnowledge)
+{
+	return ComputeTeleportToss(bUseFreeKnowledge, true,
+		90.0, 160.0, +1.0, // prefer to go in a drastically different direction
+		combine_teleport_goaldist_min.GetFloat(), combine_teleport_goaldist_max.GetFloat(), +1.0, // prefer to stay farther from enemy
+		combine_teleport_hopdist_min.GetFloat(), CoverRadius() * 4, +1.0 // prefer to jump far
+	);
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+bool CNPC_Combine::CanTeleportToLOF(bool bUseFreeKnowledge)
+{
+	return ComputeTeleportToss(bUseFreeKnowledge, false,
+		90.0, 160.0, random->RandomFloat(-1.0f, +1.0f),
+		combine_teleport_goaldist_min.GetFloat(), combine_teleport_goaldist_max.GetFloat(),
+		random->RandomFloat(-1.0f, +1.0f),
+		combine_teleport_hopdist_min.GetFloat(), CoverRadius() * 4, 0.0 // No difference on how far the jump would be
+	);
+}
+
+bool CNPC_Combine::CanTossTeleportGrenade(Vector const& posTarget)
+{
+	if (!m_iTeleportGrenades)
+		return false;
+
+	Vector vecMaxs = Vector(8, 8, 8);
+	Vector vecMins = -vecMaxs;
+	Vector vecToss = VecCheckToss(this, EyePosition(), posTarget,
+		combine_teleport_toss_height.GetFloat(),
+		1.0, true, &vecMins, &vecMaxs);
+
+	if (vecToss != vec3_origin)
+	{
+		m_vecTossVelocity = vecToss;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void CNPC_Combine::OnTossedTeleportProjectile(CBaseEntity* pProjectile)
+{
+	EmitSound("NPC_Combine.GrenadeLaunch");
+
+	m_hTeleportProjectile = pProjectile;
+	m_flNextTeleportGrenadeTime = gpGlobals->curtime + 100;
+
+	SetSolid(SOLID_NONE);
+	AddEffects(EF_NODRAW | EF_NOSHADOW);
+	if (CBaseCombatWeapon* pWeapon = GetActiveWeapon())
+	{
+		pWeapon->AddEffects(EF_NODRAW | EF_NOSHADOW);
+	}
+}
+
+void CNPC_Combine::OnTeleportProjectileAction(CBaseEntity* pProjectile, bool bTeleport)
+{
+	EmitSound("NPC_Combine.GrenadeLaunch");
+
+	SetSolid(SOLID_BBOX);
+	RemoveEffects(EF_NODRAW | EF_NOSHADOW);
+	if (CBaseCombatWeapon* pWeapon = GetActiveWeapon())
+	{
+		pWeapon->AddEffects(EF_NODRAW | EF_NOSHADOW);
+	}
+
+	m_flNextTeleportGrenadeTime = MAX(
+		gpGlobals->curtime + combine_teleport_toss_delay.GetFloat(),
+		m_flLastTeleportGrenadeTime + combine_teleport_toss_delay2.GetFloat());
+	m_flLastTeleportGrenadeTime = gpGlobals->curtime;
+	m_hTeleportProjectile.Term();
+
+	if (CBaseEntity* pEnemy = GetEnemy())
+	{
+		Vector posEnemy = pEnemy->GetAbsOrigin();
+		float flDistFromEnemy = (posEnemy - GetAbsOrigin()).Length();
+		if (flDistFromEnemy < combine_teleport_noreload_dist_max.GetFloat())
+		{
+			FullyLoadWeaponClips();
+		}
+	}
+}
+
+void CNPC_Combine::FullyLoadWeaponClips()
+{
+	CBaseCombatWeapon* pWeapon = GetActiveWeapon();
+	if (!pWeapon)
+		return;
+
+	if (pWeapon->UsesClipsForAmmo1())
+	{
+		pWeapon->m_iClip1 = pWeapon->GetMaxClip1();
+	}
+	if (pWeapon->UsesClipsForAmmo2())
+	{
+		pWeapon->m_iClip2 = pWeapon->GetMaxClip2();
+	}
+	ClearCondition(COND_LOW_PRIMARY_AMMO);
+	ClearCondition(COND_NO_PRIMARY_AMMO);
+	ClearCondition(COND_NO_SECONDARY_AMMO);
 }
 
 //-----------------------------------------------------------------------------

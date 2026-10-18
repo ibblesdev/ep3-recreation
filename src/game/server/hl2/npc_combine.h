@@ -21,6 +21,13 @@
 #include "ai_behavior_actbusy.h"
 #include "ai_sentence.h"
 #include "ai_baseactor.h"
+#include "ai_networkmanager.h"
+#include "ai_pathfinder.h"
+#include "ai_link.h"
+
+#ifdef HL2_EP3
+//#include "npc_advisor_roaming.h" //TODO: Readd this when roaming advisor is done
+#endif
 
 
 // Used when only what combine to react to what the spotlight sees
@@ -33,7 +40,10 @@
 //=========================================================
 class CNPC_Combine :
 	public CAI_BaseActor
-
+#ifdef HL2_EP3
+	//,
+	//public CAdvisorCooperationDefaultImpl 
+#endif
 {
 	DECLARE_DATADESC();
 	DEFINE_CUSTOM_AI;
@@ -49,9 +59,9 @@ public:
 	bool			CheckCanThrowGrenade( const Vector &vecTarget );
 	virtual	bool	CanGrenadeEnemy( bool bUseFreeKnowledge = true );
 	virtual bool	CanAltFireEnemy( bool bUseFreeKnowledge );
-	//virtual bool	CanTeleportFromEnemy( bool bUseFreeKnowledge = true );
-	//virtual bool	CanTeleportToLOF( bool bUseFreeKnowledge = true );
-	//virtual bool	CanTossTeleportGrenade( Vector const &posTarget );
+	virtual bool	CanTeleportFromEnemy( bool bUseFreeKnowledge = true );
+	virtual bool	CanTeleportToLOF( bool bUseFreeKnowledge = true );
+	virtual bool	CanTossTeleportGrenade( Vector const &posTarget );
 	int				GetGrenadeConditions( float flDot, float flDist );
 	int				RangeAttack2Conditions( float flDot, float flDist ); // For innate grenade attack
 	int				MeleeAttack1Conditions( float flDot, float flDist ); // For kick/punch
@@ -158,17 +168,17 @@ public:
 
 //	virtual bool	PassesDamageFilter( const CTakeDamageInfo &info );
 
-//protected:
-	/*virtual bool	ComputeTeleportToss(
+protected:
+	virtual bool	ComputeTeleportToss(
 		bool bUseFreeKnowledge, bool bPreferCoverPos,
 		float flAngMin, float flAngMax, float flAngPreference,
 		float flDistMin, float flDistMax, float flDistPreference,
-		float flTravelMinDist, float flTravelMaxDist, float flTravelDistPreference );*/
+		float flTravelMinDist, float flTravelMaxDist, float flTravelDistPreference );
 
-	//virtual void Advisor_OnStartedLevitating();
-	//virtual void Advisor_OnFinishedLevitating();
-	//virtual void VPhysicsUpdate( IPhysicsObject *pPhysics );
-	//virtual void UpdateOnRemove();
+	virtual void Advisor_OnStartedLevitating();
+	virtual void Advisor_OnFinishedLevitating();
+	virtual void VPhysicsUpdate( IPhysicsObject *pPhysics );
+	virtual void UpdateOnRemove();
 
 protected:
 	void			SetKickDamage( int nDamage ) { m_nKickDamage = nDamage; }
