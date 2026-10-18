@@ -80,6 +80,9 @@
 #include "eventlist.h"
 #include "globalstate.h"
 #include "physics_prop_ragdoll.h"
+#ifdef HL2_EP3
+#include "physics_prop_statue.h"
+#endif
 #if defined( INFESTED_DLL )
 #include "physics_prop_statue.h"
 #endif

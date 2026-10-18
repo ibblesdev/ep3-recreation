@@ -37,8 +37,6 @@ public:
 	virtual bool			Damage_IsTimeBased( int iDmgType );
 	// TEMP:
 	virtual int				Damage_GetTimeBased( void );
-	
-	virtual float			FlPlayerFallDamage(CBasePlayer* pPlayer);
 
 	virtual bool			ShouldCollide( int collisionGroup0, int collisionGroup1 );
 	virtual bool			ShouldUseRobustRadiusDamage(CBaseEntity *pEntity);
@@ -82,6 +80,8 @@ public:
 	virtual float			GetAmmoDamage( CBaseEntity *pAttacker, CBaseEntity *pVictim, int nAmmoType );
 
 	virtual bool			ShouldBurningPropsEmitLight();
+
+	virtual float			FlPlayerFallDamage(CBasePlayer* pPlayer);
 public:
 
 	bool AllowDamage( CBaseEntity *pVictim, const CTakeDamageInfo &info );
