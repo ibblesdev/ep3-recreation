@@ -75,6 +75,13 @@ void CBaseHLCombatWeapon::ItemHolsterFrame( void )
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+bool CBaseHLCombatWeapon::IsSpecialSuitAbility(void)
+{
+	return false;
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 bool CBaseHLCombatWeapon::CanLower()
 {
 	if ( SelectWeightedSequence( ACT_VM_IDLE_LOWERED ) == ACTIVITY_NOT_AVAILABLE )
@@ -122,6 +129,14 @@ bool CBaseHLCombatWeapon::Deploy( void )
 	if ( GetOwner() && GetOwner()->IsPlayer() )
 	{
 		CHL2_Player *pPlayer = assert_cast<CHL2_Player*>( GetOwner() );
+
+		if (IsSpecialSuitAbility())
+		{
+#ifndef CLIENT_DLL
+			pPlayer->SetActiveSpecialSuitAbility(this);
+#endif
+			return false;
+		}
 		if ( pPlayer->IsWeaponLowered() )
 		{
 			if ( SelectWeightedSequence( ACT_VM_IDLE_LOWERED ) != ACTIVITY_NOT_AVAILABLE )

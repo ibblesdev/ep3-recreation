@@ -52,6 +52,8 @@ public:
 	static const	WeaponProficiencyInfo_t *GetDefaultProficiencyValues();
 
 	virtual void	ItemHolsterFrame( void );
+	virtual bool	IsSpecialSuitAbility(void);	// Weapon can be used as a suit ability
+
 	virtual bool SendWeaponAnim( int iActivity ) { return BaseClass::SendWeaponAnim( iActivity );};
 
 	int				m_iPrimaryAttacks;		// # of primary attacks performed with this weapon
