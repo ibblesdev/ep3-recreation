@@ -12,13 +12,18 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+STUB_WEAPON_CLASS(weapon_egon, WeaponEgon, C_BaseHLCombatWeapon);
+STUB_WEAPON_CLASS(weapon_pipebomblauncher, WeaponPipeBombLauncher, C_HLSelectFireMachineGun);
+STUB_WEAPON_CLASS(weapon_teleport, WeaponTeleport, C_BaseHLCombatWeapon);
+STUB_WEAPON_CLASS(weapon_gauss, WeaponGauss, C_BaseHLCombatWeapon);
+
+
 STUB_WEAPON_CLASS( cycler_weapon, WeaponCycler, C_BaseCombatWeapon );
 
 STUB_WEAPON_CLASS( weapon_binoculars, WeaponBinoculars, C_BaseHLCombatWeapon );
 STUB_WEAPON_CLASS( weapon_bugbait, WeaponBugBait, C_BaseHLCombatWeapon );
 STUB_WEAPON_CLASS( weapon_flaregun, Flaregun, C_BaseHLCombatWeapon );
 STUB_WEAPON_CLASS( weapon_annabelle, WeaponAnnabelle, C_BaseHLCombatWeapon );
-STUB_WEAPON_CLASS( weapon_gauss, WeaponGaussGun, C_BaseHLCombatWeapon );
 STUB_WEAPON_CLASS( weapon_cubemap, WeaponCubemap, C_BaseCombatWeapon );
 STUB_WEAPON_CLASS( weapon_alyxgun, WeaponAlyxGun, C_HLSelectFireMachineGun );
 STUB_WEAPON_CLASS( weapon_citizenpackage, WeaponCitizenPackage, C_BaseHLCombatWeapon );
@@ -39,8 +44,6 @@ STUB_WEAPON_CLASS( weapon_crowbar, WeaponCrowbar, C_BaseHLBludgeonWeapon );
 STUB_WEAPON_CLASS( weapon_hopwire, WeaponHopwire, C_BaseHLCombatWeapon );
 //STUB_WEAPON_CLASS( weapon_proto1, WeaponProto1, C_BaseHLCombatWeapon );
 #endif
-
-STUB_WEAPON_CLASS( weapon_egon, WeaponEgon, C_BaseCombatWeapon);
 
 //#ifdef HL2_LOSTCOAST
 STUB_WEAPON_CLASS( weapon_oldmanharpoon, WeaponOldManHarpoon, C_WeaponCitizenPackage );
