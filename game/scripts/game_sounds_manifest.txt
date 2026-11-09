@@ -3,10 +3,12 @@ game_sounds_manifest
 	"precache_file"		"scripts/game_sounds.txt"
 	"precache_file"		"scripts/game_sounds_ui.txt"
 	"precache_file"		"scripts/game_sounds_player.txt"
+	"precache_file"		"scripts/game_sounds_player_ep3.txt"
 
 	// Weapon sounds
 	"precache_file"		"scripts/game_sounds_weapons.txt"
 	"precache_file"		"scripts/game_sounds_weapons_ep2.txt"
+	"precache_file"		"scripts/game_sounds_weapons_ep3.txt"
 
 	// HL2 World, Ambient Generic, Items, Physics, Vehicles
 	"precache_file"		"scripts/game_sounds_world.txt"
@@ -108,6 +110,7 @@ game_sounds_manifest
 	"precache_file"		"scripts/npc_sounds_attackheli.txt"
 	"precache_file"		"scripts/npc_sounds_antlionguard.txt"
 	"precache_file"		"scripts/npc_sounds_antlion.txt"
+	"precache_file"		"scripts/npc_sounds_antlion_episodic.txt"
 	"precache_file"		"scripts/npc_sounds_env_headcrabcanister.txt"
 	"precache_file"		"scripts/npc_sounds_combine_ball.txt"
 	"precache_file"		"scripts/npc_sounds_combine_mine.txt"
@@ -118,5 +121,5 @@ game_sounds_manifest
 	"precache_file"		"scripts/npc_sounds_alyx_episodic2.txt"
 	"precache_file"		"scripts/npc_sounds_turret_episodic2.txt"
 
-	"precache_file"		"scripts/game_sounds_ai_addons.txt"
+	"precache_file"		"scripts/npc_sounds_blob.txt"
 }
