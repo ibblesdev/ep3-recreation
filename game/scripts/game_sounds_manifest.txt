@@ -122,4 +122,5 @@ game_sounds_manifest
 	"precache_file"		"scripts/npc_sounds_turret_episodic2.txt"
 
 	"precache_file"		"scripts/npc_sounds_blob.txt"
+	"precache_file"		"scripts/game_sounds_ai_addons.txt"
 }
