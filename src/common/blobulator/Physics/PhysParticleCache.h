@@ -1,106 +1,87 @@
-//==== Blobulator. Copyright © 2005-2006, Rosware LLC, All rights reserved. ====//
-
+//==== Blobulator. Copyright © 2004-2024, Ilya D. Rosenberg, All rights reserved. ====//
 #pragma once
+#include "PhysParticle.h"
+#include "..\Point3D.h"
+#include "..\smartarray.h"
 
-#include "../smartarray.h"
-#include "../point3d.h"
-#include "../implicit/impdefines.h"
-#include "physparticle.h"
-
-#define CUBE(a) ((a) * (a) * (a))
-#define MAX_CHECKLIST_DIAMETER 5
-#define MAX_CHECKLIST_SIZE CUBE(MAX_CHECKLIST_DIAMETER)
-
-
-const int xSize = PARTICLE_CACHE_XSIZE;
-const int ySize = PARTICLE_CACHE_YSIZE;
-const int zSize = PARTICLE_CACHE_ZSIZE;
-
-class PhysParticleListNode
-{
-  public:
+class PhysParticleListNode {
+public:
 	PhysParticle* particle;
 	PhysParticleListNode* next;
-	int mask; // TODO: shouldn't really be here
+	int mask;
 };
 
-// TODO: Rather than using pointers here, I should
-// use unsigned shorts that are indexes into the array....
-// it will save lots and lots of memory and really increase
-// performance (as it did in imprenderer)
-struct ArrayItem
-{
+class ArrayItem {
 	PhysParticleListNode* particlesHere;
 };
 
-struct CheckListItem
-{
+class CheckListItem {
 	int offset;
 	int mask;
 };
 
-struct PhysParticleAndDist
-{
-	PhysParticle* particle;
-	float distSq;
-};
+class PhysParticleCache {
+public:
 
-/*
-#if (DYNAMIC_ALLOC==1)
-	// NOTE: This allows ArrayItem to be shared between instances
-	// of PhysParticleCache, but is not thread safe.
-	// Going forward, I should try to have a single version of
-	// the particle cache per thread.
-	extern ArrayItem (*array)[ySize][zSize];
-#else
-	extern ArrayItem array[xSize][ySize][zSize];
-#endif
-*/
-
-class PhysParticleCache
-{
-  //Allocating the array within the class is slower
-  //Probably a static allocation within the class is fine
-  //ArrayItem (*array)[ySize][zSize];
-
-  public:
 	PhysParticleCache();
-	PhysParticleCache(float interactionRadius, float cubeWidth = 0.0f);
-	~PhysParticleCache();
-
-	//void generate_check_list2(float cutoff_r, float cube_width);
-
-	void setCacheParams(float interactionRadius, float cubeWidth = 0.0f);
-	void setInteractionRadius(float interactionRadius) { setCacheParams(interactionRadius); }
-	void setCubeWidth(float cubeWidth) { setCacheParams(-1.0f, cubeWidth); }
-	void setOffset(Point3D const& offset);
+	PhysParticleCache(float p1, float p2);
 
 	void beginFrame();
-	void beginTile(int nParticles);
-	void insertParticle(PhysParticle* b);
-	void calcNeighbors(PhysParticle* b, PhysParticle*** neighbors, int* size);
-	void endTile();
 	void endFrame();
 
-	Point3D getOuterDimensions() { return outerDimensions; };
-	Point3D getInnerDimensions() { return innerDimensions; };
-	float getMarginWidth() { return marginWidth; };
+	void beginTile(int p1);
+	void endTile();
 
-	inline PhysParticleAndDist* get(PhysParticle *b);
-	
- private:
+	void calcNeighbors(PhysParticle* p1, PhysParticle*** p2, int* p3);
+	void insertParticle(PhysParticle* p1);
+	void setCacheParams(float p1, float p2);
+	void setOffset(Point3D& p1);
 
-	void generateCheckList(float cutoff_r, float cube_width);
+	Point3D getInnerDimensions();
+	Point3D getOuterDimensions();
+	float	getMarginWidth();
+
+	/*PhysParticleAndDist* get(PhysParticle* particle) {
+
+		static PhysParticleAndDist dists[2000];
+		int size = 0;
+
+		//int cnt = particles_sa.size;
+		//Msg("particles-sa.size = %i", particles_sa.size);
+		
+		for (int i = 0; i < particles_sa.size; i++) {
+			
+			float dx = (particle->center[0] - particles_sa[i].particle->center[0]) * (particle->center[0] - particles_sa[i].particle->center[0]);
+			float dy = (particle->center[1] - particles_sa[i].particle->center[1]) * (particle->center[1] - particles_sa[i].particle->center[1]);
+			float dz = (particle->center[2] - particles_sa[i].particle->center[2]) * (particle->center[2] - particles_sa[i].particle->center[2]);
+
+			float distanceSq = dx + dy + dz;
+
+			if (distanceSq <= interactionRadiusSq) {
+				dists[size].particle = particles_closeby_sa2[i];
+				dists[size].distSq = distanceSq;
+				size++;
+			}
+		}
+
+		dists[size].particle = nullptr;
+		dists[size].distSq = 0.0f;
+
+		return &dists[0];
+	}*/
+
+private:
+
+	void generateCheckList(float p1, float p2);
+
 	void recalculateBB();
 	void recalculateDimensions();
 
-	ArrayItem (*array)[ySize][zSize];
-
+	ArrayItem* array[100][100];
 	int marginNCubes;
-	float marginWidth;
+	int marginWidth;
 
 	Point3D offset;
-
 	Point3D outerDimensions;
 	Point3D outerBBMins;
 	Point3D outerBBMaxs;
@@ -109,62 +90,34 @@ class PhysParticleCache
 	Point3D innerBBMins;
 	Point3D innerBBMaxs;
 
-
 	int insertCount;
 	int getCount;
 	int searchCount;
 	int clearCount;
 
 	int check_list_size;
-	CheckListItem check_list[MAX_CHECKLIST_SIZE];
+	CheckListItem check_list[125];
 
-	//int check_list2_size;
-	//int check_list2[MAX_CHECKLIST_SIZE];
-
-	/*float halfXSize, halfYSize, halfZSize;*/
-	// TODO: Is it necessary to store these
-	float cubeWidth, oneOverCubeWidth;
+	float cubeWidth;
+	float oneOverCubeWidth;
 	float interactionRadius;
 	float interactionRadiusSq;
-	//float symCubeWidth, renderCubeWidth;
+	SmartArray<PhysParticleListNode, 0, 16> particles_sa;
+	SmartArray<ArrayItem, 0, 16> clear_list_sa;
+	SmartArray<PhysParticle*, 0, 16> particles_closeby_sa2;
 
-	 // TODO: I can keep a next particle pointer inside particles to get rid of this array
-	/*
-	int particles_size;
-	PhysParticleListNode particles[MAX_PARTICLES];
-
-	int clear_list_size;
-	ArrayItem* clear_list[MAX_PARTICLES];
-	*/
-
-	SmartArray<PhysParticleListNode> particles_sa;
-	SmartArray<ArrayItem*> clear_list_sa;
-	//SmartArray<PhysParticleAndDist> particles_closeby_sa;
-	SmartArray<PhysParticle*> particles_closeby_sa2;
-
-	/*
-	// This is the worst case... if we test every cube... the plus one is for the null sentinel value
-	int particles_closeby_size;
-	PhysParticle* particles_closeby[MAX_PARTICLES * (MAX_CHECKLIST_SIZE+1)];
-	
-	// This is the worst case... if the particles are really spread out
-	int clear_closeby_size;
-	ArrayItem* clear_closeby_list[MAX_PARTICLES * MAX_CHECKLIST_SIZE];
-	*/
 };
 
-
-// TODO: Move this into PhysParticleCacheFactory.h?
-class PhysParticleCacheFactory
-{
+class PhysParticleCacheFactory {
 public:
-	static PhysParticleCacheFactory* factory;
 
 	PhysParticleCache* getCache();
-	void returnCache(PhysParticleCache* cache);
+	void returnCache(PhysParticleCache* pCache);
+
+	static PhysParticleCacheFactory* factory;
 
 private:
-	PhysParticleCacheFactory();
-	SmartArray<PhysParticleCache*> m_caches;
-};
 
+	PhysParticleCacheFactory();
+
+};
