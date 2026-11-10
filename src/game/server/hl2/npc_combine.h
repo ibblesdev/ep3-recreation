@@ -26,7 +26,7 @@
 #include "ai_link.h"
 
 #ifdef HL2_EP3
-//#include "npc_advisor_roaming.h" //TODO: Readd this when roaming advisor is done
+#include "ep3/npc_advisor_roaming.h" //TODO: Readd this when roaming advisor is done
 #endif
 
 
@@ -41,8 +41,8 @@
 class CNPC_Combine :
 	public CAI_BaseActor
 #ifdef HL2_EP3
-	//,
-	//public CAdvisorCooperationDefaultImpl 
+	,
+	public CAdvisorCooperationDefaultImpl
 #endif
 {
 	DECLARE_DATADESC();

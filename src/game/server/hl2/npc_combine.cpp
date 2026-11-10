@@ -189,6 +189,7 @@ DEFINE_INPUTFUNC(FIELD_VOID, "StopPatrolling", InputStopPatrolling),
 DEFINE_INPUTFUNC(FIELD_VOID, "HitByBugbait", InputHitByBugbait),
 
 DEFINE_INPUTFUNC(FIELD_STRING, "ThrowGrenadeAtTarget", InputThrowGrenadeAtTarget),
+DEFINE_INPUTFUNC(FIELD_STRING, "ThrowTeleportGrenadeAtTarget", InputThrowTeleportGrenadeAtTarget),
 
 DEFINE_FIELD(m_iLastAnimEventHandled, FIELD_INTEGER),
 DEFINE_FIELD(m_fIsElite, FIELD_BOOLEAN),
@@ -196,6 +197,19 @@ DEFINE_FIELD(m_vecAltFireTarget, FIELD_VECTOR),
 
 DEFINE_KEYFIELD(m_iTacticalVariant, FIELD_INTEGER, "tacticalvariant"),
 DEFINE_KEYFIELD(m_iPathfindingVariant, FIELD_INTEGER, "pathfindingvariant"),
+
+#ifdef HL2_EP3
+
+DEFINE_KEYFIELD(m_advisor_bCooperate, FIELD_BOOLEAN, "AdvisorCooperate"),
+DEFINE_FIELD(m_advisor_bLevitating, FIELD_BOOLEAN),
+DEFINE_FIELD(m_advisor_hEnt, FIELD_EHANDLE),
+
+DEFINE_FIELD(m_shadow_flTeleportDist, FIELD_FLOAT),
+DEFINE_FIELD(m_shadow_maxSpeed, FIELD_FLOAT),
+DEFINE_FIELD(m_shadow_maxAngSpeed, FIELD_FLOAT),
+DEFINE_FIELD(m_shadow_flags, FIELD_INTEGER),
+
+#endif
 
 END_DATADESC()
 
