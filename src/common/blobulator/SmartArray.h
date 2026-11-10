@@ -1,19 +1,239 @@
-//==== Blobulator. Copyright © 2004-2024, Ilya D. Rosenberg, All rights reserved. ====//
+//==== Blobulator. Copyright (c) 2005-2006, Rosware LLC, All rights reserved. ====//
 #pragma once
 
-#include "tier0/platform.h"
+/////////////////////////////////////////////
+// SmartArray version 2.0
+//
+// 11/13/2006 Added quick sort function
+//
+/////////////////////////////////////////////
 
-#include <malloc.h>
-#include <memory.h>
-#include <stdio.h>
+// The following define controls whether ASSERTS will be enabled
+// in a debug build. It should have no effect on Release builds
+// since asserts are not compiled in release builds.
+#define ASSERT_SMART_ARRAY
 
 #define KEEP_MAX_SIZE 0
 
-// IMPORTANT WARNING: Never keep a pointer to a smart array element.
+#ifdef SPU
+#include "ps3/spu_job_shared.h"
+
+// The SPU version is very lightweight. Just the bare minimum to make it compile
+// There is no allocation either.
+// But it needs the same memory footprint as the PPU version.
+
+template <class T, bool sse_align = false, int initialCapacity = 16>
+class SmartArray
+{
+public:
+	FORCEINLINE void pushAutoSize(const T& e)
+	{
+		// We are not allocating on the SPU, so the capacity has to be big enough...
+		Assert(size < capacity);
+		a[size] = e;
+		size ++;
+	}
+
+	FORCEINLINE T& pop(void)
+	{
+#ifdef ASSERT_SMART_ARRAY
+		Assert(size >= 1);
+#endif
+		return a[--size];
+	}
+
+	FORCEINLINE T& operator[] (int i)
+	{
+#ifdef ASSERT_SMART_ARRAY
+		Assert(i >= 0 && i < size);
+#endif
+		return a[i];
+	}
+
+	T* a;
+	int size;
+	int capacity;
+#if (KEEP_MAX_SIZE == 1)
+	int max_size;
+#endif
+};
+
+#else
+
+#ifndef _PS3
+#include <malloc.h>
+#include <memory.h>
+#endif
+#include "implicit/impdefines.h"
+#include "tier0/memalloc.h"
+
+#if (defined(RENDER_API) && RENDER_API==VALVE_API)
+	#include "tier0/dbg.h"
+#else
+	#include <assert.h>
+	#define Assert assert
+#endif
+
+// BIG WARNING: Never keep a pointer to a smart array element.
 // When the array resizes the pointer will point to junk!!!
 
-#pragma warning( push )
-#pragma warning( disable : 4127 )
+namespace Helper
+{
+	// Static version, can be used for SmartArray or standard C++ arrays
+
+	// The following function quick-sorts an array of size 3 or more.
+	// For identifying the pivot, it takes the median of the first, last
+	// and central item. Due to this, it performs well on arrays that are
+	// sorted, backwards sorted, and on degenerate cases such as an array
+	// where many values are the same.
+
+	// This code has been thoroughly tested.... do not change without
+	// careful testing afterwards
+
+	// TODO: Evaluate whether making variables static in here actually
+	// saves stack space, and whether it makes the code run faster.
+	// TODO: Use macros for swapping items, and for insuring an ordering
+
+	template <class T, class Sorter>
+	static void sort(Sorter sorter, T * a, int lo0, int hi0)
+	{
+		//depth ++;
+		//printf("x %d %d %d\n", lo0, hi0, depth);
+		//fflush(stdout);
+
+		int c0;
+		c0 = (lo0 + hi0) / 2;
+
+		T t;
+
+		if(sorter.gt(a[lo0], a[hi0])) { t = a[lo0]; a[lo0] = a[hi0]; a[hi0] = t; }
+		if(sorter.gt(a[lo0], a[c0]))  { t = a[lo0]; a[lo0] = a[c0];  a[c0] = t;  }
+		if(sorter.gt(a[c0],  a[hi0])) { t = a[c0];  a[c0]  = a[hi0]; a[hi0] = t; }
+
+		// if the size is 3, everything is now sorted... return.
+		// the size should not be less than 3
+		if(hi0 - lo0 <= 2) return;
+
+		//printf("%d %d %d\n", a[lo0], a[c0], a[hi0]);
+
+		// Find the value of the pivot and swap out the pivot to the end of the array
+		// We don't explicitly need to store the pivot in the end of the array because
+		// we store it inside of mid.
+		// NOTE: A slight optimization might be to do the sort above for size==3 and to
+		// do a slightly different sort here which doesn't modify a[hi0] (since it gets
+		// overwritten with a[lo] after the partition step anyway.
+		T mid;
+		mid = a[c0]; a[c0] = a[hi0]; /*a[hi0] = mid;*/
+
+		// lo is set to lo0-1 instead of lo0 and hi is set to hi0 instead
+		// of hi0-1 because in the while loop, we immediately add +1 to lo
+		// and subtract 1 from hi
+		int lo = lo0-1; // lo can be made static
+		int hi = hi0;
+
+		// This is the partition step
+		Assert(lo < hi);
+		while (1)
+		{
+			// Note that because of the 3 way sort at the beginning, we are guaranteed
+			// that there is either one value greater than or equal to the pivot
+			// and that there is another value less than or equal to the pivot between lo0 and hi0-1.
+			// Thus, there is no way that lo can go below lo0 and that hi can go above hi0-1.
+
+			// We use a do-while loop here instead of a regular while loop, because
+			// we always want lo to be incremented and hi to be decremented at the start
+			// of each iteration. Otherwise, we can go into an infinite loop if there are
+			// multiple items equal to the pivot.
+
+			do {lo++;} while (sorter.gt(mid, a[lo]));
+			do {hi--;} while (sorter.gt(a[hi], mid));
+
+			if (lo >= hi) break;
+
+			t = a[lo]; a[lo] = a[hi]; a[hi] = t;
+		}
+
+		Assert(hi >= lo0);
+		Assert(lo <= hi0-1);
+
+		// Move the mid back to the middle. We swap mid with lo because
+		// we are guaranteed that lo ends up at a value that is greater or
+		// equal to mid, thus we want that value to go to the end of the array
+		// rather than sending a[hi] to the end (which could be less than mid).
+		a[hi0] = a[lo];
+		a[lo] = mid;
+
+		// Update lo to be the element before mid, and hi to be the element
+		// after mid
+		hi = lo + 1;
+		lo = lo - 1;
+
+		// The two subarrays to be sorted now are lo0...lo, hi...hi0
+
+		int lSizeM1; lSizeM1 = lo-lo0; // the size of the left subarray minus one
+		// If the left subarray is size 2, sort it here.
+		// If it is size 3 or more, recurse.
+		// If it is size 1, do nothing.
+		if(lSizeM1 == 1)
+		{
+			if(sorter.gt(a[lo0], a[lo]))
+			{
+				t = a[lo0]; a[lo0] = a[lo]; a[lo] = t;
+			}
+		}
+		else if(lSizeM1 > 1)
+		{
+			sort<T, Sorter>(sorter, a, lo0, lo);
+		}
+
+		int rSizeM1; rSizeM1 = hi0-hi; // the size of the right subarray minus one
+		// If the right subarray is size 2, sort it here.
+		// If it is size 3 or more, recurse.
+		// If it is size 1 do nothing.
+		if(rSizeM1 == 1)
+		{
+			if (sorter.gt(a[hi], a[hi0]))
+			{
+				t = a[hi]; a[hi] = a[hi0]; a[hi0] = t;
+			}
+		}
+		else if(rSizeM1 > 1)
+		{
+			sort<T, Sorter>(sorter, a, hi, hi0);
+		}
+
+		//depth --;
+	}
+
+	template <class T, class Sorter>
+	FORCEINLINE
+	static void sort(Sorter sorter, T * a, int size)
+	{
+		if(size == 2)
+		{
+			if(sorter.gt(a[0], a[1]))
+			{
+				T t = a[0]; a[0] = a[1]; a[1] = t;
+			}
+		}
+		else if(size > 2)
+		{
+			// size is 3 or more
+			Helper::sort<T, Sorter>(sorter, a, 0, size - 1);
+		}
+	}
+
+	template <class T, class Sorter>
+	FORCEINLINE
+	static bool testSort(Sorter sorter, T * a, int size)
+	{
+		for(int i = 0; i < size-1; i++)
+		{
+			if(sorter.gt(a[i], a[i+1])) return false;
+		}
+		return true;
+	}
+}
 
 template <class T, bool sse_align = false, int initialCapacity = 16> class SmartArray
 {
@@ -35,9 +255,13 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 		capacity = initialCapacity;
 		if(initialCapacity > 0)
 		{
-			if(sse_align) a = (T*)_aligned_malloc(capacity * sizeof(T), 16);
-			else a = (T*)malloc(capacity * sizeof(T));
-			assert(a);
+			if(sse_align)
+				a = ( T* ) MemAlloc_AllocAligned( capacity * sizeof(T), 16);
+			else
+				a = ( T*) malloc( capacity * sizeof( T ) );
+			#ifdef ASSERT_SMART_ARRAY
+			Assert(a);
+			#endif
 		}
 		else
 		{
@@ -47,8 +271,11 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 
 	~SmartArray()
 	{
-		assert(initialCapacity == 0 || a);
-		free(a);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(initialCapacity == 0 || a);
+		#endif
+		if(sse_align) MemAlloc_FreeAligned(a);
+		else free(a);
 	}
 
 	/*SmartArray(int initialCapacity)
@@ -63,21 +290,20 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 		if(capacity < c)
 		{
 			capacity = c * 2;
-			if(sse_align)
-			{	
-				a = (T*)_aligned_realloc(a, capacity * sizeof(T), 16);
-				// On some platforms, aligned_realloc crashes, and malloc
-				// along with a memcpy must be used
-				//T* temp = (T*)_aligned_malloc(capacity * sizeof(T), 16);
-				//memcpy(temp, a, size * sizeof(T));
-				//_aligned_free(a);
-				//a = temp;
+			if(sse_align){
+				// TODO: For some reason, _aligned_realloc crashes...
+				//       I think this is a problem with a Valve memory routeine.
+				//       this must be fixed!!!!
+				//a = (T*)_aligned_realloc(a, capacity * sizeof(T), 16);
+				T* temp = (T*)MemAlloc_AllocAligned(capacity * sizeof(T), 16);
+				memcpy(temp, a, size * sizeof(T));
+				MemAlloc_FreeAligned(a);
+				a = temp;
 			}
-			else
-			{
-				a = (T*)realloc(a, capacity * sizeof(T));
-			}
-			assert(a);
+			else a = (T*)realloc(a, capacity * sizeof(T));
+			#ifdef ASSERT_SMART_ARRAY
+			Assert(a);
+			#endif
 		}
 	}
 
@@ -88,56 +314,58 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 		if(capacity < c)
 		{
 			capacity = c * 2;
-			if(sse_align)
-			{
-				a = (T*)_aligned_realloc(a, capacity * sizeof(T), 16);
-				//T* temp = (T*)_aligned_malloc(capacity * sizeof(T), 16);
-				//memcpy(temp, a, size * sizeof(T));
-				//_aligned_free(a);
-				//a = temp;
+			if(sse_align) {
+				//a = (T*)_aligned_realloc(a, capacity * sizeof(T), 16);
+				T* temp = (T*)MemAlloc_AllocAligned(capacity * sizeof(T), 16);
+				memcpy(temp, a, size * sizeof(T));
+				MemAlloc_FreeAligned(a);
+				a = temp;
 			}
-			else
-			{
-				a = (T*)realloc(a, capacity * sizeof(T));
-			}
-			assert(a);
+			else a = (T*)realloc(a, capacity * sizeof(T));
+			#ifdef ASSERT_SMART_ARRAY
+			Assert(a);
+			#endif
 		}
 	}
 
 	FORCEINLINE void resize(int c)
 	{
 		capacity = c;
-		if(sse_align)
-		{
-			a = (T*)_aligned_realloc(a, capacity * sizeof(T), 16);
-			//T* temp = (T*)_aligned_malloc(capacity * sizeof(T), 16);
-			//memcpy(temp, a, size * sizeof(T));
-			//_aligned_free(a);
-			//a = temp;
+		if(sse_align) {
+			//a = (T*)_aligned_realloc(a, capacity * sizeof(T), 16);
+			T* temp = (T*)MemAlloc_AllocAligned(capacity * sizeof(T), 16);
+			memcpy(temp, a, size * sizeof(T));
+			MemAlloc_FreeAligned(a);
+			a = temp;
 		}
-		else
-		{
-			a = (T*)realloc(a, capacity * sizeof(T));
-		}
-		assert(a);
+		else a = (T*)realloc(a, capacity * sizeof(T));
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(a);
+		#endif
 	}
 
 	FORCEINLINE T& operator[] (int i)
 	{
-		assert(i >= 0 && i < capacity);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(i >= 0 && i < size);
+		#endif
 		return a[i];
 	}
 
 	FORCEINLINE void put(int i, const T& e)
 	{
-		assert(i >= 0 && i < size);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(i >= 0 && i < size);
+		#endif
 		a[i] = e;
 	}
 
 	/*
 	FORCEINLINE void putAutoSize(int i, const T& e)
 	{
-		assert(i >= 0);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(i >= 0);
+		#endif
 		if(i >= size)
 		{
 			size = i + 1;
@@ -149,7 +377,9 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 
 	FORCEINLINE void push(const T& e)
 	{
-		assert(size < capacity);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(size < capacity);
+		#endif
 		a[size] = e;
 		size ++;
 	}
@@ -160,13 +390,62 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 	// directly into that item. That's what this function is for.
 	FORCEINLINE T& push()
 	{
-		assert(size < capacity);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(size < capacity);
+		#endif
 		return a[size++];
 	}
+	
+#if 0
 
+	// Unfortunately interlockedPush is not really thread safe.
+	// I.e. the size is incremented, but the item is not pushed yet.
+	// Thus if the result is popped before the value has been set, we will retrieve an incorrect data.
+	// We actually have to use a futex for push and pop.
+
+	// NOTE: The int32 type used to be type LONG. Must verify int32 is safe.
+	FORCEINLINE T& interlockedPush(void)
+	{
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(size < capacity);
+		#endif
+
+		return a[ThreadInterlockedIncrement((int32 volatile*)&size) - 1];
+	}
+
+	FORCEINLINE void interlockedPush(const T & e)
+	{
+#ifdef ASSERT_SMART_ARRAY
+		Assert(size < capacity);
+#endif
+		int index = ThreadInterlockedIncrement((int32 volatile*)&size) - 1;
+		a[index] = e;
+	}
+
+	FORCEINLINE bool interlockedIsEmpty()
+	{
+		// We don't want to increment / decrement as it would not be thread safe.
+		// This atomically set the size to zero if it was zero (i.e. no-op), and return the previous value in any case.
+		int oldValue = ThreadInterlockedCompareExchange((int32 volatile*)&size, 0, 0);
+		return (oldValue == 0);
+	}
+
+	// NOTE: The int32 type used to be type LONG. Must verify int32 is safe.
+	FORCEINLINE int interlockedIncrementSize(void)
+	{
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(size >= 1);
+		#endif
+
+		return InterlockedIncrementAcquire((int32 volatile*)&size);
+	}
+#endif
+	
 	FORCEINLINE void push2(const T& e1, const T& e2)
 	{
-		assert(size < capacity);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert( ( size + 1 ) < capacity);
+		#endif
 		a[size] = e1;
 		a[size+1] = e2;
 		size += 2;
@@ -205,13 +484,37 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 
 	FORCEINLINE T& pop(void)
 	{
-		assert(size >= 1);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(size >= 1);
+		#endif
 		return a[--size];
 	}
 
+#if 0
+	FORCEINLINE T& interlockedPop(void)
+	{
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(size >= 1);
+		#endif
+
+		return a[ThreadInterlockedDecrement( (int32 volatile*)&size )];
+	}
+
+	FORCEINLINE int interlockedDecrementSize(void)
+	{
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(size >= 1);
+		#endif
+
+		return InterlockedDecrementAcquire((int32 volatile*)&size);
+	}
+#endif
+
 	FORCEINLINE void pop2(T& e1, T& e2)
 	{
-		assert(size >= 1);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(size >= 2);
+		#endif
 		e1 = a[size-2];
 		e2 = a[size-1];
 		size -= 2;
@@ -219,7 +522,9 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 
 	FORCEINLINE void remove(int i)
 	{
-		assert(i >= 0 && i < size);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(i >= 0 && i < size);
+		#endif
 		for( ;i < size-1; i++)
 		{
 			a[i] = a[i+1];
@@ -229,7 +534,9 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 
 	FORCEINLINE T removeAndReturn(int i)
 	{
-		assert(i >= 0 && i < size);
+		#ifdef ASSERT_SMART_ARRAY
+		Assert(i >= 0 && i < size);
+		#endif
 		T removed = a[i];
 		for( ;i < size-1; i++)
 		{
@@ -273,14 +580,10 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 		return a[size-1];
 	}
 
-	template <class C>
-	FORCEINLINE bool testSort()
+	template <class Sorter>
+	FORCEINLINE bool testSort(Sorter sorter)
 	{
-		for(int i = 0; i < size-1; i++)
-		{
-			if(C::gt(a[i], a[i+1])) return false;
-		}
-		return true;
+		return Helper::testSort<T, Sorter>(sorter, a, size);
 	}
 
 	// TODO: Should try using swap in sort
@@ -289,189 +592,26 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 		T t = a[i]; a[i] = a[j]; a[j] = t;
 	}
 
-	// The following function quicksorts the smart array.
+	// The following function quicksorts the smart array, and will work on normal array as well (static version only).
 	// It uses a median of the first, last, and middle value of a
-	// subarray to find pivots, thus it does well on both sorted,
+	// sub-array to find pivots, thus it does well on both sorted,
 	// and reverse sorted arrays. It also does well on arrays that
 	// contain many duplicate values.
-	template <class C>
-	FORCEINLINE void sort()
+
+	// Non-static version, only for SmartArray
+
+	template <class Sorter>
+	FORCEINLINE
+	void sort(Sorter sorter)
 	{
-		if(size == 2)
-		{
-			if(C::gt(a[0], a[1])) { T t = a[0]; a[0] = a[1]; a[1] = t;  }
-		}
-		else if(size > 2)
-		{
-			// size is 3 or more
-			sort<C>(0, size - 1);
-		}
+		Helper::sort<T, Sorter>(sorter, a, size);
 	}
 
-
-	// The following function quicksorts an array of size 3 or more.
-	// For identifying the pivot, it takes the median of the first, last
-	// and central item. Due to this, it performs well on arrays that are
-	// sorted, backwards sorted, and on degenerate cases such as an array
-	// where many values are the same.
-
-	// This code has been thoroughly tested.... do not change without
-	// careful testing afterwards
-
-	// TODO: Evaluate whether making variables static in here actually
-	// saves stack space, and whether it makes the code run faster.
-	// TODO: Use macros for swapping items, and for insuring an ordering
-
-	// Note I took out statics because they weren't thread safe =)
-	#define SORT_STATIC 
-
-	template <class C>
-	void sort(int lo0, int hi0)
+	template <class Sorter>
+	FORCEINLINE
+	void sort(Sorter sorter, int lo0, int hi0)
 	{
-		//depth ++;
-		//DevMsg("x %d %d %d\n", lo0, hi0, depth);
-		//fflush(stdout);
-
-		SORT_STATIC int c0;
-		c0 = (lo0 + hi0) / 2;
-
-		SORT_STATIC T t;
-
-		if(C::gt(a[lo0], a[hi0])) { t = a[lo0]; a[lo0] = a[hi0]; a[hi0] = t; }
-		if(C::gt(a[lo0], a[c0]))  { t = a[lo0]; a[lo0] = a[c0];  a[c0] = t;  }
-		if(C::gt(a[c0],  a[hi0])) { t = a[c0];  a[c0]  = a[hi0]; a[hi0] = t; }
-
-		// if the size is 3, everything is now sorted... return.
-		// the size should not be less than 3
-		if(hi0 - lo0 <= 2) return;
-
-		//DevMsg("%d %d %d\n", a[lo0], a[c0], a[hi0]);
-		
-		// Find the value of the pivot and swap out the pivot to the end of the array
-		// We don't explicitly need to store the pivot in the end of the array because
-		// we store it inside of mid.
-		// NOTE: A slight optimization might be to do the sort above for size==3 and to
-		// do a slightly different sort here which doesn't modify a[hi0] (since it gets
-		// overwritten with a[lo] after the partition step anyway.
-		SORT_STATIC T mid;
-		mid = a[c0]; a[c0] = a[hi0]; /*a[hi0] = mid;*/
-
-		// lo is set to lo0-1 instead of lo0 and hi is set to hi0 instead
-		// of hi0-1 because in the while loop, we immediately add +1 to lo
-		// and subtract 1 from hi
-		int lo = lo0-1; // lo can be made static
-		int hi = hi0;
-
-		// This is the partition step
-		assert(lo < hi);
-		while (1)
-		{
-			// Note that because of the 3 way sort at the beginning, we are guaranteed
-			// that there is either one value greater than or equal to the pivot
-			// and that there is another value less than or equal to the pivot between lo0 and hi0-1.
-			// Thus, there is no way that lo can go below lo0 and that hi can go above hi0-1.
-
-			// We use a do-while loop here instead of a regular while loop, because
-			// we always want lo to be incremented and hi to be decremented at the start
-			// of each iteration. Otherwise, we can go into an infinite loop if there are
-			// multiple items equal to the pivot.
-
-			do {lo++;} while (C::gt(mid, a[lo]));
-			do {hi--;} while (C::gt(a[hi], mid));
-
-			if (lo >= hi) break;
-			  
-			t = a[lo]; a[lo] = a[hi]; a[hi] = t;
-		}
-
-		assert(hi >= lo0);
-		assert(lo <= hi0-1);
-
-		// Move the mid back to the middle. We swap mid with lo because
-		// we are guaranteed that lo ends up at a value that is greater or
-		// equal to mid, thus we want that value to go to the end of the array
-		// rather than sending a[hi] to the end (which could be less than mid).
-		a[hi0] = a[lo];
-		a[lo] = mid;
-
-		// Update lo to be the element before mid, and hi to be the element
-		// after mid
-		hi = lo + 1;
-		lo = lo - 1;
-
-		// The two subarrays to be sorted now are lo0...lo, hi...hi0
-
-		SORT_STATIC int lSizeM1; lSizeM1 = lo-lo0; // the size of the left subarray minus one
-		// If the left subarray is size 2, sort it here.
-		// If it is size 3 or more, recurse.
-		// If it is size 1, do nothing.
-		if(lSizeM1 == 1)
-		{
-			if(C::gt(a[lo0], a[lo])) { t = a[lo0]; a[lo0] = a[lo]; a[lo] = t; }
-		}
-		else if(lSizeM1 > 1)
-		{
-			sort<C>(lo0, lo);
-		}
-
-		SORT_STATIC int rSizeM1; rSizeM1 = hi0-hi; // the size of the right subarray minus one
-		// If the right subarray is size 2, sort it here.
-		// If it is size 3 or more, recurse.
-		// If it is size 1 do nothing.
-		if(rSizeM1 == 1)
-		{
-			if(C::gt(a[hi], a[hi0])) { t = a[hi]; a[hi] = a[hi0]; a[hi0] = t; }
-		}
-		else if(rSizeM1 > 1)
-		{
-			sort<C>(hi, hi0);
-		}
-
-		//depth --;
-	}
-
-
-	FORCEINLINE void shuffle(int first = INT_MIN, int last = INT_MIN)
-	{
-		if(first == INT_MIN && last == INT_MIN) { first = 0; last = size-1; }
-
-		if(last <= first) return;
-
-		//int first = 0;
-		//int last;
-		//if(_size == -1) last = size - 1;
-		//else last = _size - 1;
-
-		const int _RANDOM_BITS = 15;	// minimum random bits from rand()
-		const int _RANDOM_MAX = (1U << _RANDOM_BITS) - 1;
-
-		int next = first;
-
-		for(unsigned long index = 2; ++next != last; ++index)
-		{
-			// assume unsigned long big enough for _Diff count
-			unsigned long Rm = _RANDOM_MAX;
-			unsigned long Rn = ::rand() & _RANDOM_MAX;
-			int iters = 0;
-			for (; Rm < index && Rm != ~0UL; Rm = (Rm << _RANDOM_BITS) | _RANDOM_MAX)
-			{
-				Rn = (Rn << _RANDOM_BITS) | ::rand();	// build random value
-				iters ++;
-			}
-			if(iters > 1)
-			{
-				DevMsg("Iters greater than 1\n");
-			}
-
-			// Swap the next item on the list with any of the preceeding items, including itself.
-			// Does this mean that items close to the beginning are more likely to stay at the beginning?
-			int diff = Rn % index; // index is 1+next if first = 0
-			int swap_with = first + diff;
-
-			T temp = a[next];
-			a[next] = a[swap_with];
-			a[swap_with] = temp;
-		}
+		Helper::sort<T, Sorter>(sorter, a, lo0, hi0);
 	}
 
 	FORCEINLINE void swapData(SmartArray<T, sse_align, initialCapacity>& other)
@@ -485,15 +625,76 @@ template <class T, bool sse_align = false, int initialCapacity = 16> class Smart
 		other.size = temp_size;
 		
 		#if (KEEP_MAX_SIZE == 1)
-			int temp_max_size = max_size;
-			max_size = other.max_size;
-			other.max_size = temp_max_size;
+		int temp_max_size = max_size;
+		max_size = other.max_size;
+		other.max_size = temp_max_size;
 		#endif
 			
 		int temp_capacity = capacity;
 		capacity = other.capacity;
 		other.capacity = temp_capacity;
 	}
+
+private:
+	// Start do not implement
+	SmartArray(const SmartArray<T> & other);
+	SmartArray & operator=(const SmartArray<T> & other);
+	// End do not implement
+};
+#endif
+
+template <typename T, int SIZE>
+class FixedArray
+{
+public:
+	FixedArray()
+		:
+		m_nSize(0)
+	{
+		// Do nothing...
+	}
+
+	// Kept the name for easy switch between FixedArray and SmartArray
+	FORCEINLINE void pushAutoSize(const T& e)
+	{
+		// We are not allocating on the SPU, so the capacity has to be big enough...
+		if (m_nSize < SIZE)
+		{
+			m_Items[m_nSize] = e;
+			++m_nSize;
+		}
+	}
+
+	FORCEINLINE T& pop(void)
+	{
+		Assert(m_nSize >= 1);
+		return m_Items[--m_nSize];
+	}
+
+	FORCEINLINE T& operator[] (int i)
+	{
+		Assert((i >= 0) && (i < m_nSize));
+		return m_Items[i];
+	}
+
+	int GetSize() const
+	{
+		return m_nSize;
+	}
+
+	void SetSize(int nSize)
+	{
+		Assert(nSize >= 0);
+		m_nSize = nSize;
+	}
+
+	void Clear()
+	{
+		m_nSize = 0;
+	}
+
+private:
+	T m_Items[SIZE];
+	int m_nSize;
 };
 
-#pragma warning( pop )
