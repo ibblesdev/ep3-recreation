@@ -56,3 +56,4 @@ config.cfg
 src/.vs/Game_Portal-2013/v17/Browse.VC.db
 src/.vs/Game_Portal-2013/v17/Solution.VC.db
 *.db
+*.ain
