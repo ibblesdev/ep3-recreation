@@ -6,7 +6,7 @@
 	//BASE TEXTURE
 	"$baseTexture"    "models/weapons/w_icegun/ice_surface"
 	//"$baseColorTint" "[.3 .3 1]" //tints base color, uses alpha channel of base texture as a mask
-	"$opacityTexture" "paintblobs\blob_surface_opacity_erase" //transparency mask, independent of fresnel term 
+	"$opacityTexture" "models/weapons/w_icegun/ice_surface_opacity" //transparency mask, independent of fresnel term 
 
 	//NORMAL MAP
 	"$normalMap"	"models/weapons/w_icegun/ice_surface_normal"
