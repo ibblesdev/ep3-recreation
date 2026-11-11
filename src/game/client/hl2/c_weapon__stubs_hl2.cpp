@@ -17,6 +17,7 @@ STUB_WEAPON_CLASS(weapon_pipebomblauncher, WeaponPipeBombLauncher, C_HLSelectFir
 STUB_WEAPON_CLASS(weapon_teleport, WeaponTeleport, C_BaseHLCombatWeapon);
 STUB_WEAPON_CLASS(weapon_gauss, WeaponGauss, C_BaseHLCombatWeapon);
 STUB_WEAPON_CLASS(weapon_icegun, WeaponIcegun, C_BaseHLCombatWeapon);
+STUB_WEAPON_CLASS(weapon_flechettegun, WeaponFlechetteGun, C_HLSelectFireMachineGun);
 
 
 STUB_WEAPON_CLASS( cycler_weapon, WeaponCycler, C_BaseCombatWeapon );
