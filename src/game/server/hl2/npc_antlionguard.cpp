@@ -2933,136 +2933,172 @@ void CNPC_AntlionGuard::RunTask( const Task_t *pTask )
 		*/
 
 	case TASK_ANTLIONGUARD_CHARGE:
+	{
+		Activity eActivity = GetActivity();
+
+		// If it's frozen, crash instantly
+		if (m_flFrozen > 0.1f)
 		{
-			Activity eActivity = GetActivity();
+			// Crash
+			EmitSound("NPC_AntlionGuard.Shove");
+			UTIL_ScreenShake(GetAbsOrigin(), 16.0f, 4.0f, 1.0f, 400.0f, SHAKE_START);
+			SetIdealActivity(ACT_ANTLIONGUARD_CHARGE_CRASH);
 
-			// See if we're trying to stop after hitting/missing our target
-			if ( eActivity == ACT_ANTLIONGUARD_CHARGE_STOP || eActivity == ACT_ANTLIONGUARD_CHARGE_CRASH ) 
+			// Blow up the surrounding ice
+			CBaseEntity* pChild = FirstMoveChild();
+
+			while (pChild)
 			{
-				if ( IsActivityFinished() )
-				{
-					TaskComplete();
-					return;
-				}
+				CBaseEntity* pThisChild = pChild;
 
-				// Still in the process of slowing down. Run movement until it's done.
-				AutoMovement();
+				// Get next child before killing this one
+				pChild = pChild->NextMovePeer();
+
+				if (FClassnameIs(pThisChild, "ice_sphere"))
+				{
+					if (RandomInt(1, 4) == 1)
+					{
+						// Only gib every 4th to prevent slowdown
+						pThisChild->TakeDamage(CTakeDamageInfo(this, this, 100, DMG_GENERIC));
+					}
+					else
+					{
+						UTIL_Remove(pThisChild);
+					}
+				}
+			}
+
+			// Not frozen anymore!
+			m_flFrozen = 0.0f;
+		}
+
+		// See if we're trying to stop after hitting/missing our target
+		if (eActivity == ACT_ANTLIONGUARD_CHARGE_STOP || eActivity == ACT_ANTLIONGUARD_CHARGE_CRASH)
+		{
+			if (IsActivityFinished())
+			{
+				TaskComplete();
 				return;
 			}
 
-			// Check for manual transition
-			if ( ( eActivity == ACT_ANTLIONGUARD_CHARGE_START ) && ( IsActivityFinished() ) )
-			{
-				SetActivity( ACT_ANTLIONGUARD_CHARGE_RUN );
-			}
+			// Still in the process of slowing down. Run movement until it's done.
+			AutoMovement();
+			return;
+		}
 
-			// See if we're still running
-			if ( eActivity == ACT_ANTLIONGUARD_CHARGE_RUN || eActivity == ACT_ANTLIONGUARD_CHARGE_START ) 
-			{
-				if ( HasCondition( COND_NEW_ENEMY ) || HasCondition( COND_LOST_ENEMY ) || HasCondition( COND_ENEMY_DEAD ) )
-				{
-					SetActivity( ACT_ANTLIONGUARD_CHARGE_STOP );
-					return;
-				}
-				else 
-				{
-					if ( GetEnemy() != NULL )
-					{
-						Vector	goalDir = ( GetEnemy()->GetAbsOrigin() - GetAbsOrigin() );
-						VectorNormalize( goalDir );
+		// Check for manual transition
+		if ((eActivity == ACT_ANTLIONGUARD_CHARGE_START) && (IsActivityFinished()))
+		{
+			SetActivity(ACT_ANTLIONGUARD_CHARGE_RUN);
+		}
 
-						if ( DotProduct( BodyDirection2D(), goalDir ) < 0.25f )
-						{
-							if ( !m_bDecidedNotToStop )
-							{
-								// We've missed the target. Randomly decide not to stop, which will cause
-								// the guard to just try and swing around for another pass.
-								m_bDecidedNotToStop = true;
-								if ( RandomFloat(0,1) > 0.3 )
-								{
-									m_iChargeMisses++;
-									SetActivity( ACT_ANTLIONGUARD_CHARGE_STOP );
-								}
-							}
-						}
-						else
-						{
-							m_bDecidedNotToStop = false;
-						}
-					}
-				}
-			}
-
-			// Steer towards our target
-			float idealYaw;
-			if ( GetEnemy() == NULL )
+		// See if we're still running
+		if (eActivity == ACT_ANTLIONGUARD_CHARGE_RUN || eActivity == ACT_ANTLIONGUARD_CHARGE_START)
+		{
+			if (HasCondition(COND_NEW_ENEMY) || HasCondition(COND_LOST_ENEMY) || HasCondition(COND_ENEMY_DEAD))
 			{
-				idealYaw = GetMotor()->GetIdealYaw();
+				SetActivity(ACT_ANTLIONGUARD_CHARGE_STOP);
+				return;
 			}
 			else
 			{
-				idealYaw = CalcIdealYaw( GetEnemy()->GetAbsOrigin() );
-			}
-
-			// Add in our steering offset
-			idealYaw += ChargeSteer();
-			
-			// Turn to face
-			GetMotor()->SetIdealYawAndUpdate( idealYaw );
-
-			// See if we're going to run into anything soon
-			ChargeLookAhead();
-
-			// Let our animations simply move us forward. Keep the result
-			// of the movement so we know whether we've hit our target.
-			AIMoveTrace_t moveTrace;
-			if ( AutoMovement( GetEnemy(), &moveTrace ) == false )
-			{
-				// Only stop if we hit the world
-				if ( HandleChargeImpact( moveTrace.vEndPosition, moveTrace.pObstruction ) )
+				if (GetEnemy() != NULL)
 				{
-					// If we're starting up, this is an error
-					if ( eActivity == ACT_ANTLIONGUARD_CHARGE_START )
-					{
-						TaskFail( "Unable to make initial movement of charge\n" );
-						return;
-					}
+					Vector	goalDir = (GetEnemy()->GetAbsOrigin() - GetAbsOrigin());
+					VectorNormalize(goalDir);
 
-					// Crash unless we're trying to stop already
-					if ( eActivity != ACT_ANTLIONGUARD_CHARGE_STOP )
+					if (DotProduct(BodyDirection2D(), goalDir) < 0.25f)
 					{
-						if ( moveTrace.fStatus == AIMR_BLOCKED_WORLD && moveTrace.vHitNormal == vec3_origin )
+						if (!m_bDecidedNotToStop)
 						{
-							SetActivity( ACT_ANTLIONGUARD_CHARGE_STOP );
-						}
-						else
-						{
-							SetActivity( ACT_ANTLIONGUARD_CHARGE_CRASH );
-						}
-					}
-				}
-				else if ( moveTrace.pObstruction )
-				{
-					// If we hit an antlion, don't stop, but kill it
-					if ( moveTrace.pObstruction->Classify() == CLASS_ANTLION )
-					{
-						if ( FClassnameIs( moveTrace.pObstruction, "npc_antlionguard" ) )
-						{
-							// Crash unless we're trying to stop already
-							if ( eActivity != ACT_ANTLIONGUARD_CHARGE_STOP )
+							// We've missed the target. Randomly decide not to stop, which will cause
+							// the guard to just try and swing around for another pass.
+							m_bDecidedNotToStop = true;
+							if (RandomFloat(0, 1) > 0.3)
 							{
-								SetActivity( ACT_ANTLIONGUARD_CHARGE_STOP );
+								m_iChargeMisses++;
+								SetActivity(ACT_ANTLIONGUARD_CHARGE_STOP);
 							}
 						}
-						else
-						{
-							ApplyChargeDamage( this, moveTrace.pObstruction, moveTrace.pObstruction->GetHealth() );
-						}
+					}
+					else
+					{
+						m_bDecidedNotToStop = false;
 					}
 				}
 			}
 		}
-		break;
+
+		// Steer towards our target
+		float idealYaw;
+		if (GetEnemy() == NULL)
+		{
+			idealYaw = GetMotor()->GetIdealYaw();
+		}
+		else
+		{
+			idealYaw = CalcIdealYaw(GetEnemy()->GetAbsOrigin());
+		}
+
+		// Add in our steering offset
+		idealYaw += ChargeSteer();
+
+		// Turn to face
+		GetMotor()->SetIdealYawAndUpdate(idealYaw);
+
+		// See if we're going to run into anything soon
+		ChargeLookAhead();
+
+		// Let our animations simply move us forward. Keep the result
+		// of the movement so we know whether we've hit our target.
+		AIMoveTrace_t moveTrace;
+		if (AutoMovement(GetEnemy(), &moveTrace) == false)
+		{
+			// Only stop if we hit the world
+			if (HandleChargeImpact(moveTrace.vEndPosition, moveTrace.pObstruction))
+			{
+				// If we're starting up, this is an error
+				if (eActivity == ACT_ANTLIONGUARD_CHARGE_START)
+				{
+					TaskFail("Unable to make initial movement of charge\n");
+					return;
+				}
+
+				// Crash unless we're trying to stop already
+				if (eActivity != ACT_ANTLIONGUARD_CHARGE_STOP)
+				{
+					if (moveTrace.fStatus == AIMR_BLOCKED_WORLD && moveTrace.vHitNormal == vec3_origin)
+					{
+						SetActivity(ACT_ANTLIONGUARD_CHARGE_STOP);
+					}
+					else
+					{
+						SetActivity(ACT_ANTLIONGUARD_CHARGE_CRASH);
+					}
+				}
+			}
+			else if (moveTrace.pObstruction)
+			{
+				// If we hit an antlion, don't stop, but kill it
+				if (moveTrace.pObstruction->Classify() == CLASS_ANTLION)
+				{
+					if (FClassnameIs(moveTrace.pObstruction, "npc_antlionguard"))
+					{
+						// Crash unless we're trying to stop already
+						if (eActivity != ACT_ANTLIONGUARD_CHARGE_STOP)
+						{
+							SetActivity(ACT_ANTLIONGUARD_CHARGE_STOP);
+						}
+					}
+					else
+					{
+						ApplyChargeDamage(this, moveTrace.pObstruction, moveTrace.pObstruction->GetHealth());
+					}
+				}
+			}
+		}
+	}
+	break;
 
 	case TASK_WAIT_FOR_MOVEMENT:
 	{

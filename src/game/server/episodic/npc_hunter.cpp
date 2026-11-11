@@ -3723,17 +3723,53 @@ void CNPC_Hunter::RunTask( const Task_t *pTask )
 		{
 			Activity eActivity = GetActivity();
 
-			// See if we're trying to stop after hitting/missing our target
-			if ( eActivity == ACT_HUNTER_CHARGE_STOP || eActivity == ACT_HUNTER_CHARGE_CRASH ) 
+			// If it's frozen, crash instantly
+			if (m_flFrozen > 0.1f)
 			{
-				if ( IsActivityFinished() )
+				// Crash
+				EmitSound("NPC_Hunter.ChargeHitWorld");
+				UTIL_ScreenShake(GetAbsOrigin(), 16.0f, 4.0f, 1.0f, 400.0f, SHAKE_START);
+				SetIdealActivity(ACT_HUNTER_CHARGE_CRASH);
+
+				// Blow up the surrounding ice
+				CBaseEntity* pChild = FirstMoveChild();
+
+				while (pChild)
 				{
-					m_flNextChargeTime = gpGlobals->curtime + hunter_charge_min_delay.GetFloat() + random->RandomFloat( 0, 2.5 ) + random->RandomFloat( 0, 2.5 );
-					float delayMultiplier = ( g_pGameRules->IsSkillLevel( SKILL_EASY ) ) ? 1.5 : 1.0;
-					float groupDelay = gpGlobals->curtime +  ( 2.0  + random->RandomFloat( 0, 2 ) ) * delayMultiplier;
-					for ( int i = 0; i < g_Hunters.Count(); i++ )
+					CBaseEntity* pThisChild = pChild;
+
+					// Get next child before killing this one
+					pChild = pChild->NextMovePeer();
+
+					if (FClassnameIs(pThisChild, "ice_sphere"))
 					{
-						if ( g_Hunters[i] != this && g_Hunters[i]->m_flNextChargeTime < groupDelay )
+						if (RandomInt(1, 4) == 1)
+						{
+							// Only gib every 4th to prevent slowdown
+							pThisChild->TakeDamage(CTakeDamageInfo(this, this, 100, DMG_GENERIC));
+						}
+						else
+						{
+							UTIL_Remove(pThisChild);
+						}
+					}
+				}
+
+				// Not frozen anymore!
+				m_flFrozen = 0.0f;
+			}
+
+			// See if we're trying to stop after hitting/missing our target
+			if (eActivity == ACT_HUNTER_CHARGE_STOP || eActivity == ACT_HUNTER_CHARGE_CRASH)
+			{
+				if (IsActivityFinished())
+				{
+					m_flNextChargeTime = gpGlobals->curtime + hunter_charge_min_delay.GetFloat() + random->RandomFloat(0, 2.5) + random->RandomFloat(0, 2.5);
+					float delayMultiplier = (g_pGameRules->IsSkillLevel(SKILL_EASY)) ? 1.5 : 1.0;
+					float groupDelay = gpGlobals->curtime + (2.0 + random->RandomFloat(0, 2)) * delayMultiplier;
+					for (int i = 0; i < g_Hunters.Count(); i++)
+					{
+						if (g_Hunters[i] != this && g_Hunters[i]->m_flNextChargeTime < groupDelay)
 						{
 							g_Hunters[i]->m_flNextChargeTime = groupDelay;
 						}
@@ -3748,29 +3784,29 @@ void CNPC_Hunter::RunTask( const Task_t *pTask )
 			}
 
 			// Check for manual transition
-			if ( ( eActivity == ACT_HUNTER_CHARGE_START ) && ( IsActivityFinished() ) )
+			if ((eActivity == ACT_HUNTER_CHARGE_START) && (IsActivityFinished()))
 			{
-				SetIdealActivity( ACT_HUNTER_CHARGE_RUN );
+				SetIdealActivity(ACT_HUNTER_CHARGE_RUN);
 			}
 
 			// See if we're still running
-			if ( eActivity == ACT_HUNTER_CHARGE_RUN || eActivity == ACT_HUNTER_CHARGE_START ) 
+			if (eActivity == ACT_HUNTER_CHARGE_RUN || eActivity == ACT_HUNTER_CHARGE_START)
 			{
-				if ( HasCondition( COND_NEW_ENEMY ) || HasCondition( COND_LOST_ENEMY ) || HasCondition( COND_ENEMY_DEAD ) )
+				if (HasCondition(COND_NEW_ENEMY) || HasCondition(COND_LOST_ENEMY) || HasCondition(COND_ENEMY_DEAD))
 				{
-					SetIdealActivity( ACT_HUNTER_CHARGE_STOP );
+					SetIdealActivity(ACT_HUNTER_CHARGE_STOP);
 					return;
 				}
-				else 
+				else
 				{
-					if ( GetEnemy() != NULL )
+					if (GetEnemy() != NULL)
 					{
-						Vector	goalDir = ( GetEnemy()->GetAbsOrigin() - GetAbsOrigin() );
-						VectorNormalize( goalDir );
+						Vector	goalDir = (GetEnemy()->GetAbsOrigin() - GetAbsOrigin());
+						VectorNormalize(goalDir);
 
-						if ( DotProduct( BodyDirection2D(), goalDir ) < 0.25f )
+						if (DotProduct(BodyDirection2D(), goalDir) < 0.25f)
 						{
-							SetIdealActivity( ACT_HUNTER_CHARGE_STOP );
+							SetIdealActivity(ACT_HUNTER_CHARGE_STOP);
 						}
 					}
 				}
@@ -3778,20 +3814,20 @@ void CNPC_Hunter::RunTask( const Task_t *pTask )
 
 			// Steer towards our target
 			float idealYaw;
-			if ( GetEnemy() == NULL )
+			if (GetEnemy() == NULL)
 			{
 				idealYaw = GetMotor()->GetIdealYaw();
 			}
 			else
 			{
-				idealYaw = CalcIdealYaw( GetEnemy()->GetAbsOrigin() );
+				idealYaw = CalcIdealYaw(GetEnemy()->GetAbsOrigin());
 			}
 
 			// Add in our steering offset
 			idealYaw += ChargeSteer();
-			
+
 			// Turn to face
-			GetMotor()->SetIdealYawAndUpdate( idealYaw );
+			GetMotor()->SetIdealYawAndUpdate(idealYaw);
 
 			// See if we're going to run into anything soon
 			ChargeLookAhead();
@@ -3799,63 +3835,63 @@ void CNPC_Hunter::RunTask( const Task_t *pTask )
 			// Let our animations simply move us forward. Keep the result
 			// of the movement so we know whether we've hit our target.
 			AIMoveTrace_t moveTrace;
-			if ( AutoMovement( GetEnemy(), &moveTrace ) == false )
+			if (AutoMovement(GetEnemy(), &moveTrace) == false)
 			{
 				// Only stop if we hit the world
-				if ( HandleChargeImpact( moveTrace.vEndPosition, moveTrace.pObstruction ) )
+				if (HandleChargeImpact(moveTrace.vEndPosition, moveTrace.pObstruction))
 				{
 					// If we're starting up, this is an error
-					if ( eActivity == ACT_HUNTER_CHARGE_START )
+					if (eActivity == ACT_HUNTER_CHARGE_START)
 					{
-						TaskFail( "Unable to make initial movement of charge\n" );
+						TaskFail("Unable to make initial movement of charge\n");
 						return;
 					}
 
 					// Crash unless we're trying to stop already
-					if ( eActivity != ACT_HUNTER_CHARGE_STOP )
+					if (eActivity != ACT_HUNTER_CHARGE_STOP)
 					{
-						if ( moveTrace.fStatus == AIMR_BLOCKED_WORLD && moveTrace.vHitNormal == vec3_origin )
+						if (moveTrace.fStatus == AIMR_BLOCKED_WORLD && moveTrace.vHitNormal == vec3_origin)
 						{
-							SetIdealActivity( ACT_HUNTER_CHARGE_STOP );
+							SetIdealActivity(ACT_HUNTER_CHARGE_STOP);
 						}
 						else
 						{
 							// Shake the screen
-							if ( moveTrace.fStatus != AIMR_BLOCKED_NPC )
+							if (moveTrace.fStatus != AIMR_BLOCKED_NPC)
 							{
-								EmitSound( "NPC_Hunter.ChargeHitWorld" );
-								UTIL_ScreenShake( GetAbsOrigin(), 16.0f, 4.0f, 1.0f, 400.0f, SHAKE_START );
+								EmitSound("NPC_Hunter.ChargeHitWorld");
+								UTIL_ScreenShake(GetAbsOrigin(), 16.0f, 4.0f, 1.0f, 400.0f, SHAKE_START);
 							}
-							SetIdealActivity( ACT_HUNTER_CHARGE_CRASH );
+							SetIdealActivity(ACT_HUNTER_CHARGE_CRASH);
 						}
 					}
 				}
-				else if ( moveTrace.pObstruction )
+				else if (moveTrace.pObstruction)
 				{
 					// If we hit another hunter, stop
-					if ( moveTrace.pObstruction->Classify() == CLASS_COMBINE_HUNTER )
+					if (moveTrace.pObstruction->Classify() == CLASS_COMBINE_HUNTER)
 					{
 						// Crash unless we're trying to stop already
-						if ( eActivity != ACT_HUNTER_CHARGE_STOP )
+						if (eActivity != ACT_HUNTER_CHARGE_STOP)
 						{
-							SetIdealActivity( ACT_HUNTER_CHARGE_STOP );
+							SetIdealActivity(ACT_HUNTER_CHARGE_STOP);
 						}
 					}
 					// If we hit an antlion, don't stop, but kill it
 					// We never have hunters and antlions together, but you never know.
-					else if (moveTrace.pObstruction->Classify() == CLASS_ANTLION )
+					else if (moveTrace.pObstruction->Classify() == CLASS_ANTLION)
 					{
-						if ( FClassnameIs( moveTrace.pObstruction, "npc_antlionguard" ) )
+						if (FClassnameIs(moveTrace.pObstruction, "npc_antlionguard"))
 						{
 							// Crash unless we're trying to stop already
-							if ( eActivity != ACT_HUNTER_CHARGE_STOP )
+							if (eActivity != ACT_HUNTER_CHARGE_STOP)
 							{
-								SetIdealActivity( ACT_HUNTER_CHARGE_STOP );
+								SetIdealActivity(ACT_HUNTER_CHARGE_STOP);
 							}
 						}
 						else
 						{
-							Hunter_ApplyChargeDamage( this, moveTrace.pObstruction, moveTrace.pObstruction->GetHealth() );
+							Hunter_ApplyChargeDamage(this, moveTrace.pObstruction, moveTrace.pObstruction->GetHealth());
 						}
 					}
 				}
