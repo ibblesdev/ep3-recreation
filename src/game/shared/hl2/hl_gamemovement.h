@@ -19,6 +19,8 @@
 
 struct LadderMove_t;
 class CInfoLadderDismount;
+class CIceSculpture;
+struct icesphere_t;
 
 struct NearbyDismount_t
 {
@@ -45,6 +47,13 @@ public:
 	virtual bool CanAccelerate( void );
 
 	virtual unsigned int PlayerSolidMask( bool brushOnly = false );
+
+#if !defined( CLIENT_DLL )
+#ifdef HL2_EP3
+	virtual void WalkMove();
+	virtual void AirMove();
+#endif // HL2_EP3
+#endif // !CLIENT_DLL
 
 private:
 
@@ -79,6 +88,17 @@ private:
 
 	void		SetLadder( CFuncLadder *ladder );
 	CFuncLadder *GetLadder();
+
+#if !defined( CLIENT_DLL )
+#ifdef HL2_EP3
+	void IceMove(icesphere_t* pGround);
+	void IceStepMove(Vector& vecDestination, trace_t& trace);
+	void StayOnIce(void);
+
+	CIceSculpture* m_pOldGround;
+	float m_flIceTime;
+#endif // HL2_EP3
+#endif // !CLIENT_DLL
 };
 
 

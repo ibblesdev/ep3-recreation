@@ -1,18 +1,55 @@
-
-IceSurface
+"IceSurface"
 {
-$baseTexture "models/weapons/w_icegun/ice_surface.vtf"
-$translucent 1
-$bumpmap "models/weapons/w_icegun/ice_surface_normal"
-$model 1
-$phong 1
-$phongboost 1
-$phongexponent 20
+	//GLOBAL
+	"$uvscale" "0.025"	// scale world-axis uv projection coords
 
-$phongfresnelranges "[1 3 10]"
-$envmap env_cubemap
-$normalmapalphaenvmapmask 1
-$envmapcontrast 1
-$envmapsaturation 1
-$envmaptint "[ .08 .08 .08 ]"
-}
+	//BASE TEXTURE
+	"$baseTexture"    "models/weapons/w_icegun/ice_surface"
+	//"$baseColorTint" "[.3 .3 1]" //tints base color, uses alpha channel of base texture as a mask
+	"$opacityTexture" "paintblobs\blob_surface_opacity_erase" //transparency mask, independent of fresnel term 
+
+	//NORMAL MAP
+	"$normalMap"	"models/weapons/w_icegun/ice_surface_normal"
+	"$bumpstrength" "0.2"
+
+	//DIFFUSE
+	"$diffuseScale" "2.3"
+
+	//SPECULAR
+	"$specMaskTexture"	"models/weapons/w_icegun/ice_surface_specmask"
+	"$phongexponent"	"400"			// specular exponent of first phong highlight (on the interior layer)
+	"$phongboost"		"5"				// specular boost of first phong highlight
+	"$phongexponent2"	"40"			// specular exponent of second phong highlight (on the outer layer)
+	"$phongboost2"		"7"				// specular boost of second phong highlight
+
+	//RIM
+	"$rimlightexponent" "1"
+	"$rimlightboost" "1"
+
+	//ENVIRONMENT MAP
+	"$envMap"		"models/weapons/w_icegun/ice_surface_envmap"
+	"$envMapTint"	"[0.1 0.14 0.2]"
+
+	//FRESNEL
+	"$fresnelBumpStrength" "0"
+	//"$fresnelWarpTexture" "Models/blob/blob_fresnel_warp"
+	"$translucentFresnelMinMaxExp" "[0 0.5 2]"
+
+	//INTERIOR
+	"$interior" 1						// toggle this to hide the gooey interior, useful when working on the surface material
+	"$interiorFogStrength" "0.00325"	// strength of the fog (based on the thickness of the interior volume)
+	"$interiorFogLimit" "0.56"			// how opaque the fog is beyond the range of dest alpha depth
+	"$interiorFogNormalBoost" "8.5"		// degree to boost interior thickness/fog by 'side-on'ness of vertex normals to the camera
+	"$interiorBackgroundBoost" "2"		// strength of boost applied to bright background pixels
+	"$interiorAmbientScale" "1"			// strength of interior volume ambient lighting, .3 default
+	"$interiorBacklightScale" "1"		// strength of interior volume backlighing, .3 is default
+	"$interiorColor" "[0.1 0.6 0.9]"	// tints the interior volume lighting
+	"$interiorRefractStrength" "0.05"	// strength of bumped refract of the background seen through the interior
+	"$interiorRefractBlur" "0.4"		// strength of blur applied to the background seen through the interior
+
+	//LIGHTWARP	
+	//"$lightwarptexture" "Models/blob/blob_lightwarp"	// this needs a color ramp texture
+
+	"Proxies"
+	{
+	}

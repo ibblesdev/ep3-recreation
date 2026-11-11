@@ -2,6 +2,8 @@ particles_manifest
 {
 	// From HL2
 	"file" 		"particles/weaponizer_fx.pcf"
+	"file" 		"particles/ice.pcf"
+
 	"file"		"particles/error.pcf"
 	"file"		"particles/antlion_blood.pcf"
 	"file"		"particles/blood_impact.pcf"
