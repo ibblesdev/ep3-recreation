@@ -23,8 +23,6 @@ ipch
 *.sdf
 *.opensdf
 *.idb
-*.vcxproj
-*.sln
 *.filters
 *.vpc_crc
 
