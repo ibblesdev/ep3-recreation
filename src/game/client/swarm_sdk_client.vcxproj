@@ -254,6 +254,7 @@ exit 1
     <None Include="vscript_client.nut" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\shared\blob_networkbypass.cpp" />
     <ClCompile Include="achievement_notification_panel.cpp" />
     <ClCompile Include="..\shared\achievement_saverestore.cpp" />
     <ClCompile Include="..\shared\achievementmgr.cpp" />
@@ -321,11 +322,17 @@ exit 1
     <ClCompile Include="c_func_conveyor.cpp" />
     <ClCompile Include="c_func_dust.cpp" />
     <ClCompile Include="c_func_lod.cpp" />
+    <ClCompile Include="ep3\c_blob_mine.cpp" />
+    <ClCompile Include="ep3\c_dust_cloud.cpp" />
     <ClCompile Include="ep3\c_gas_pump.cpp" />
     <ClCompile Include="ep3\c_npc_advisor_roaming.cpp" />
+    <ClCompile Include="ep3\c_npc_blob.cpp" />
+    <ClCompile Include="ep3\c_npc_blob_tiny.cpp" />
     <ClCompile Include="ep3\c_weapon_flamethrower.cpp" />
+    <ClCompile Include="ep3\c_weapon_icegun.cpp" />
     <ClCompile Include="ep3\c_weapon_weaponizer.cpp" />
     <ClCompile Include="ep3\fx_gauss.cpp" />
+    <ClCompile Include="hl2\c_blob_particle.cpp" />
     <ClCompile Include="hl2\C_Func_Monitor.cpp" />
     <ClCompile Include="c_func_movelinear.cpp" />
     <ClCompile Include="c_func_occluder.cpp" />
@@ -375,6 +382,7 @@ exit 1
     <ClCompile Include="c_vehicle_choreo_generic.cpp" />
     <ClCompile Include="c_vehicle_jeep.cpp" />
     <ClCompile Include="c_vguiscreen.cpp" />
+    <ClCompile Include="hl2\c_npc_surface.cpp" />
     <ClCompile Include="hl2\c_thumper_dust.cpp" />
     <ClCompile Include="hl2\c_waterbullet.cpp" />
     <ClCompile Include="C_WaterLODControl.cpp" />
@@ -822,6 +830,7 @@ exit 1
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="hl2\hud_teleport.cpp" />
     <ClCompile Include="hl2\vgui\nb_button.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -1287,6 +1296,8 @@ exit 1
     <ClCompile Include="toolframework_client.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\shared\blob_networkbypass.h" />
+    <ClInclude Include="..\shared\ep3\blob_shareddefs.h" />
     <ClInclude Include="..\shared\ep3\npc_advisor_roaming_shareddefs.h" />
     <ClInclude Include="..\shared\ep3\weaponizer_shared.h" />
     <ClInclude Include="achievement_notification_panel.h" />
@@ -1310,8 +1321,14 @@ exit 1
     <ClInclude Include="c_spatialentity.h" />
     <ClInclude Include="cdll_bounded_cvars.h" />
     <ClInclude Include="commentary_modelviewer.h" />
+    <ClInclude Include="ep3\c_blob_mine.h" />
+    <ClInclude Include="ep3\c_dust_cloud.h" />
+    <ClInclude Include="ep3\c_npc_blob.h" />
+    <ClInclude Include="ep3\c_npc_blob_tiny.h" />
     <ClInclude Include="foundryhelpers_client.h" />
     <ClInclude Include="..\shared\game_timescale_shared.h" />
+    <ClInclude Include="hl2\c_blob_particle.h" />
+    <ClInclude Include="hl2\c_npc_surface.h" />
     <ClInclude Include="hl2\gameui\backgroundmenubutton.h" />
     <ClInclude Include="hl2\gameui\basepanel.h" />
     <ClInclude Include="hl2\gameui\basesavegamedialog.h" />
