@@ -182,48 +182,108 @@
 	}
 }
 
-// ------------------------------------------------------------------------------------
-// Flamethrower
-// ------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------ //
+// FLAME THROWER
+// ------------------------------------------------------------------------------------ //
+
 "Weapon_FlameThrower.FireStart"
 {
 	"channel"	"CHAN_ITEM"
-	"soundlevel"	"SNDLVL_95dB"
+	"soundlevel"	"SNDLVL_94dB"
 	"volume"	"1.0"
-	"wave"		"weapons/flame_thrower_start.wav"
+	"wave"		")weapons/flame_thrower_start.wav"
 }
 
 "Weapon_FlameThrower.FireLoop"	
 {
 	"channel"	"CHAN_WEAPON"
-	"soundlevel"	"SNDLVL_95dB"
+	"soundlevel"	"SNDLVL_94dB"
 	"volume"	"1.0"
-	"wave"		"weapons/flame_thrower_loop.wav"
+	"wave"		")weapons/flame_thrower_loop.wav"
+}
+
+"Weapon_FlameThrower.FireLoopCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")weapons/flame_thrower_loop_crit.wav"
 }
 
 "Weapon_FlameThrower.FireEnd"	
 {
 	"channel"	"CHAN_ITEM"
-	"soundlevel"	"SNDLVL_95dB"
+	"soundlevel"	"SNDLVL_94dB"
 	"volume"	"1.0"
-	"wave"		"weapons/flame_thrower_end.wav"
+	"wave"		")weapons/flame_thrower_end.wav"
 }
 
-"Weapon_FlameThrower.FuelFireStart"	
+"Weapon_FlameThrower.FireHit"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")weapons/flame_thrower_fire_hit.wav"
+}
+
+"Weapon_FlameThrower.PilotLoop"
 {
 	"channel"	"CHAN_WEAPON"
-	"soundlevel"	"SNDLVL_95dB"
-	"volume"	"1.0"
-	"wave"		"weapons/extinguisher/fire1.wav"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	".25"
+	"wave"		"weapons/flame_thrower_pilot.wav"
 }
 
-"Weapon_FlameThrower.FuelFireEnd"	
+"Weapon_FlameThrower.FireRocket"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		"misc/null.wav"
+}
+
+"Weapon_FlameThrower.Draw"
+{
+	"channel"	"CHAN_AUTO"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	".5"
+	"wave"		"weapons/draw_primary.wav"
+}
+
+"Weapon_FlameThrower.Fire"
 {
 	"channel"	"CHAN_ITEM"
-	"soundlevel"	"SNDLVL_95dB"
+	"soundlevel"	"SNDLVL_94dB"
 	"volume"	"1.0"
-	"wave"		"weapons/extinguisher/release1.wav"
+	"wave"		")weapons/flame_thrower_start.wav"
 }
+
+"Weapon_FlameThrower.WindDown"	
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")weapons/flame_thrower_end.wav"
+}
+
+"Weapon_FlameThrower.AirBurstAttack"
+{
+	"channel"	"CHAN_WEAPON"
+	"volume"	"1.0"
+	"pitch"		"95,105"
+	"soundlevel"	"SNDLVL_90db"
+	"wave"		")weapons/flame_thrower_airblast.wav"
+}
+
+"Weapon_FlameThrower.AirBurstAttackDeflect"
+{
+	"channel"	"CHAN_STATIC"
+	"volume"	"1.0"
+	"pitch"		"95,105"
+	"soundlevel"	"SNDLVL_84db"
+	"wave"		")weapons/flame_thrower_airblast_rocket_redirect.wav"
+}
+
 
 // ------------------------------------------------------------------------------------
 // Gluon Gun
