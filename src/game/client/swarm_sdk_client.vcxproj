@@ -332,6 +332,7 @@ exit 1
     <ClCompile Include="ep3\c_weapon_icegun.cpp" />
     <ClCompile Include="ep3\c_weapon_weaponizer.cpp" />
     <ClCompile Include="ep3\fx_gauss.cpp" />
+    <ClCompile Include="ep3\splatter.cpp" />
     <ClCompile Include="hl2\c_blob_particle.cpp" />
     <ClCompile Include="hl2\C_Func_Monitor.cpp" />
     <ClCompile Include="c_func_movelinear.cpp" />
